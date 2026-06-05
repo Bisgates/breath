@@ -1,0 +1,2773 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>你正屏息读这句话</title>
+
+<!-- KaTeX (pinned, deferred; rendered on DOMContentLoaded — never <script onload>) -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js"></script>
+<!--THREEJS-->  <!-- three.js r128 global build; injected by `assemble.py --three` when a topic needs real 3D (depth-sort + hand-rolled drag-to-rotate) -->>
+
+<style>
+:root {
+  /* surface + ink */
+  --bg:        #fbfbfd;
+  --surface:   #ffffff;
+  --surface-2: #f4f5f8;
+  --ink:       #16181d;
+  --ink-soft:  #3a3f4b;
+  --ink-faint: #6b7280;
+  --rule:      #e3e6ec;
+  --rule-2:    #cdd2dc;
+  /* brand accent */
+  --accent:    #3b5bdb;   /* deepdive blue */
+  --accent-2:  #0c8599;   /* teal */
+  /* semantic callouts */
+  --insight:   #3b5bdb;
+  --danger:    #e03131;
+  --success:   #2f9e44;
+  --warning:   #e8a000;
+  --key:       #7048e8;
+  --code-bg:   #f4f5f8;
+  --code-fg:   #1a1c22;
+  /* === per-topic VARIABLE colors — generation agents extend this block AND mirror into JS `C` === */
+  --v1: #e03131; --v2: #3b5bdb; --v3: #2f9e44; --v4: #7048e8; --v5: #e8a000;
+}
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+body {
+  margin: 0; background: var(--bg); color: var(--ink);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Helvetica Neue", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", system-ui, sans-serif;
+  font-size: 21.25px; line-height: 1.72;
+  -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility;
+}
+.mono, code, pre { font-family: ui-monospace, "SF Mono", Menlo, Monaco, Consolas, "Liberation Mono", monospace; }
+
+/* scroll progress */
+#progress { position: fixed; top: 0; left: 0; height: 3.75px; width: 0;
+  background: linear-gradient(90deg, var(--accent), var(--accent-2)); z-index: 100; transition: width .1s; }
+
+/* scroll-spy nav */
+#spy { position: fixed; top: 50%; right: 22.5px; transform: translateY(-50%); z-index: 90;
+  display: flex; flex-direction: column; gap: 12.5px; }
+#spy a { width: 12.5px; height: 12.5px; border-radius: 50%; background: var(--rule-2); position: relative; }
+#spy a.active { background: var(--accent); transform: scale(1.3); }
+#spy a span { position: absolute; right: 22.5px; top: 50%; transform: translateY(-50%);
+  white-space: nowrap; background: var(--ink); color: #fff; font-size: 15px; padding: 2.5px 10px;
+  border-radius: 5px; opacity: 0; pointer-events: none; transition: opacity .15s; }
+/* hovering anywhere on the rail reveals the whole chapter list, not just one dot */
+#spy:hover a span { opacity: 1; }
+#spy:hover a.active span { background: var(--accent); }
+
+main { max-width: 1025px; margin: 0 auto; padding: 70px 30px 120px; }
+
+/* masthead + hero stats */
+.masthead { border-bottom: 2.5px solid var(--ink); padding-bottom: 27.5px; margin-bottom: 10px; }
+.masthead .kicker { font-size: 15px; letter-spacing: .2em; text-transform: uppercase; color: var(--accent); font-weight: 600; }
+.masthead h1 { font-size: 47.5px; line-height: 1.15; margin: 12.5px 0 10px; font-weight: 700; letter-spacing: -.02em; }
+.masthead .deck { font-size: 23.75px; color: var(--ink-soft); }
+.stat-band { display: flex; flex-wrap: wrap; gap: 17.5px; margin: 32.5px 0 12.5px; }
+.stat { background: var(--surface); border: 1.25px solid var(--rule); border-radius: 12.5px; padding: 15px 22.5px; flex: 1 1 150px; }
+.stat .num { font-family: ui-monospace, monospace; font-size: 32.5px; font-weight: 700; color: var(--accent); line-height: 1; }
+.stat .lbl { font-size: 15px; color: var(--ink-faint); margin-top: 7.5px; text-transform: uppercase; letter-spacing: .04em; }
+
+/* sections — rendered flat, all at once (no scroll-reveal) */
+section { padding-top: 50px; }
+.ch-num { font-family: ui-monospace, monospace; font-size: 16.25px; color: var(--accent); letter-spacing: .1em; }
+h2 { font-size: 33.75px; font-weight: 700; margin: 5px 0 17.5px; letter-spacing: -.01em; }
+h3 { font-size: 25px; font-weight: 600; margin: 32.5px 0 12.5px; }
+p { margin: 0 0 1em; }
+.lede { font-size: 1.06rem; color: var(--ink-soft); }
+
+/* concept map strip */
+.map { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; background: var(--surface-2);
+  border: 1.25px solid var(--rule); border-radius: 15px; padding: 20px; margin: 20px 0; }
+.map .box { background: var(--surface); border: 1.25px solid var(--rule-2); border-radius: 10px; padding: 10px 15px; font-size: 17.5px; font-weight: 600; }
+.map .arrow { color: var(--ink-faint); font-size: 22.5px; }
+
+/* callouts */
+.callout { border-radius: 12.5px; padding: 17.5px 22.5px; margin: 22.5px 0; border-left: 5px solid var(--insight); background: var(--surface); }
+.callout .ct { font-size: 15px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; margin-bottom: 7.5px; }
+.callout.insight { border-color: var(--insight); } .callout.insight .ct { color: var(--insight); }
+.callout.danger  { border-color: var(--danger);  background:#fff5f5; } .callout.danger .ct { color: var(--danger); }
+.callout.success { border-color: var(--success); background:#f4fcf6; } .callout.success .ct { color: var(--success); }
+.callout.warning { border-color: var(--warning); background:#fffbf0; } .callout.warning .ct { color: var(--warning); }
+.callout.key     { border-color: var(--key);     background:#f8f5ff; } .callout.key .ct { color: var(--key); }
+.callout p:last-child { margin: 0; }
+
+/* math block: numbered + plain-language gloss */
+.math-block { background: var(--surface); border: 1.25px solid var(--rule); border-radius: 12.5px; padding: 17.5px 22.5px; margin: 20px 0; position: relative; }
+.math-block .math-label { position: absolute; right: 17.5px; top: 12.5px; font-family: ui-monospace, monospace; font-size: 15px; color: var(--ink-faint); }
+.math-block .math-note { font-style: italic; color: var(--ink-soft); font-size: .94rem; margin-top: 10px; }
+/* wide display math scrolls inside its box instead of overflowing the column (safety net — still prefer breaking long lines with \begin{aligned}) */
+.katex-display { overflow-x: auto; overflow-y: hidden; padding: 2.5px 1.25px 7.5px; }
+.katex-display > .katex { white-space: nowrap; }
+
+/* labs (interactive) */
+.lab { background: var(--surface); border: 1.25px solid var(--rule); border-radius: 15px; padding: 20px; margin: 25px 0; }
+.lab .lab-title { font-size: 16.25px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--accent); margin-bottom: 12.5px; }
+.lab canvas { display: block; width: 100%; max-width: 100%; height: auto; border-radius: 10px; background: var(--surface-2); }
+.lab .controls { display: flex; flex-wrap: wrap; gap: 17.5px; align-items: center; margin-top: 15px; }
+.lab .ctrl { display: flex; flex-direction: column; gap: 5px; font-size: 16.25px; min-width: 175px; }
+.lab .ctrl label { color: var(--ink-faint); }
+.lab .ctrl output { font-family: ui-monospace, monospace; color: var(--ink); font-weight: 600; }
+.lab input[type=range] { width: 100%; accent-color: var(--accent); }
+.lab button { background: var(--accent); color: #fff; border: 0; border-radius: 8.75px; padding: 8.75px 17.5px; font-size: 16.25px; font-weight: 600; cursor: pointer; }
+.lab button.ghost { background: var(--surface-2); color: var(--ink); border: 1.25px solid var(--rule-2); }
+.lab .readout { font-family: ui-monospace, monospace; font-size: 16.25px; color: var(--ink-soft); margin-top: 12.5px; }
+
+/* quiz */
+.quiz { background: var(--surface-2); border: 1.25px solid var(--rule); border-radius: 15px; padding: 20px 22.5px; margin: 25px 0; }
+.quiz .q { font-weight: 600; margin-bottom: 12.5px; }
+.quiz .opt { display: block; width: 100%; text-align: left; background: var(--surface); border: 1.25px solid var(--rule-2); border-radius: 10px; padding: 11.25px 15px; margin: 7.5px 0; cursor: pointer; font-size: 18.75px; }
+.quiz .opt.correct { border-color: var(--success); background:#f4fcf6; }
+.quiz .opt.wrong { border-color: var(--danger); background:#fff5f5; }
+.quiz .fb { font-size: .94rem; color: var(--ink-soft); margin-top: 10px; display: none; }
+
+/* code + tables */
+pre { background: var(--code-bg); color: var(--code-fg); border-radius: 12.5px; padding: 17.5px 20px; overflow-x: auto; font-size: .9rem; border: 1.25px solid var(--rule); }
+code { background: var(--code-bg); padding: .05rem .3rem; border-radius: 5px; font-size: .9em; }
+pre code { background: transparent; padding: 0; }
+table.cmp { width: 100%; border-collapse: collapse; font-size: .95rem; margin: 20px 0; }
+table.cmp th, table.cmp td { text-align: left; padding: 11.25px 15px; border-bottom: 1.25px solid var(--rule); }
+table.cmp th { color: var(--accent); font-size: .8rem; text-transform: uppercase; letter-spacing: .04em; }
+a { color: var(--accent); }
+
+footer { max-width: 1025px; margin: 0 auto; padding: 30px; border-top: 1.25px solid var(--rule); color: var(--ink-faint); font-size: 16.25px; }
+
+@media (max-width: 720px) {
+  main { padding: 50px 20px 90px; } .masthead h1 { font-size: 37.5px; }
+  #spy { display: none; } .lab .controls { flex-direction: column; align-items: stretch; }
+}
+@media (max-width: 480px) { body { font-size: 20px; } .masthead h1 { font-size: 31.25px; } h2 { font-size: 27.5px; } }
+@media (prefers-reduced-motion: reduce) { *, ::before, ::after { animation-duration: .001ms !important; transition-duration: .001ms !important; } }
+</style>
+</head>
+<body>
+
+<div id="progress"></div>
+<nav id="spy"><!-- one <a href="#sec-id" class="..."><span>title</span></a> per section, generated --></nav>
+
+<main>
+  <header class="masthead">
+    <div class="kicker">循证拆解 · 呼吸与自主神经</div>
+    <h1>你正屏息读这句话</h1>
+    <div class="deck">久坐、盯屏、含胸——你的呼吸正在变浅。本文从压力反射的共振讲到屏幕呼吸暂停，用可计算的模型分清哪种呼吸法真有用、哪种只是品牌叙事，并给久坐工作者一个能撑过整个工作日的方案。</div>
+    <div class="stat-band">
+      <div class="stat"><div class="num">6 /min</div><div class="lbl">心率振荡的共振呼吸频率</div></div>
+<div class="stat"><div class="num">~5 s</div><div class="lbl">压力反射环路延迟 · 定下共振点</div></div>
+<div class="stat"><div class="num">n=111</div><div class="lbl">斯坦福 RCT · 循环叹息胜出</div></div>
+<div class="stat"><div class="num">8.7</div><div class="lbl">含胸坐姿吸气压损失 (cmH₂O)</div></div>
+<div class="stat"><div class="num">0</div><div class="lbl">工作期最优解的屏息次数</div></div>
+    </div>
+  </header>
+
+  <!-- SECTIONS GO HERE.
+       Each: <section id="sec-<slug>">
+               <div class="ch-num">01</div><h2>...</h2>
+               ...problem-first prose, .math-block, .lab, worked example, .quiz checkpoint...
+             </section>
+       Spine: cold-open(why) → 先画地图(.map) → body sections → connections → quiz → close(table.cmp).
+  -->
+
+<section id="sec-open">
+  <div class="ch-num">01</div>
+  <h2>你正屏息读这句话</h2>
+
+  <p class="lede">
+    停一下，别急着往下看——<strong>注意你此刻的呼吸</strong>。多半你会发现：盯着这块屏幕、肩膀微耸、
+    胸口往里收，气吸到一半就卡住了。你不是在喘，但也谈不上在呼吸，更像是<em>忘了</em>呼吸。
+  </p>
+
+  <div class="callout warning">
+    <div class="ct">钩子诚实标注：anecdotal</div>
+    <p>
+      "屏息盯屏" 有个名字叫 <strong>screen apnea / email apnea</strong>，Linda Stone 在 2007–2008
+      非正式提出，她观察到 "大约 80% 的人盯屏时呼吸变浅或暂停"。<strong>这是逸闻，不是统计</strong>——
+      没有对照、未经发表。我把它当作一个生动的命名钩子，不是论据。但它指向的底层链条
+      （屏息 → CO₂ 滞留 → <span style="color:var(--v5)">交感唤醒</span>）在生理上是可信的，缺的只是
+      "屏幕这个具体场景" 的直接测量。这种 "机制可信、场景未测" 的区分，正是整篇要反复做的事。
+    </p>
+  </div>
+
+  <h3>困局：身体被坐姿和屏幕劫持了呼吸</h3>
+
+  <p>
+    久坐工作者的呼吸是被<strong>三件事联手劫持</strong>的。其一，<strong>含胸</strong>：上身往里收，
+    膈肌下降的空间被压扁，同样一口气吸不深——Albarrati 2018（n=35）量到含胸坐姿的吸气压代理
+    （SNIP）比直坐<strong>低 8.7 cmH₂O，p=0.04</strong>，幅度温和但方向确凿。其二，<strong>盯屏专注</strong>：
+    任务一抢走注意力，呼吸就退到自动驾驶，且自动驾驶的默认档位偏浅。其三，<strong>久坐本身</strong>：
+    横断面证据显示久坐与 <span style="color:var(--v5)">交感偏置↑</span> / <span style="color:var(--v4)">迷走张力↓</span> /
+    压力反射敏感度↓相关（证据偏弱，多为观察）。三者叠加，得到一个<strong>浅、快、交感偏置</strong>的呼吸基线。
+  </p>
+
+  <h3>朴素解法：满世界的 "深呼吸吧"</h3>
+
+  <p>
+    遇到这困局，常见的反应有三档。第一档，最朴素：<strong>"深呼吸一下"</strong>——可什么叫深？吸多满？多慢？
+    没人说得清，于是大多数人 "深呼吸" 反而吸得又快又满，变成轻度过度通气。第二档，<strong>学海豹突击队做
+    box breathing（4-4-4-4）</strong>：四拍吸、四拍屏、四拍呼、四拍屏，带着 Navy SEAL 的光环。第三档，
+    打开应用商店，<strong>满屏的呼吸 App</strong>，每个都信誓旦旦。
+  </p>
+
+  <div class="callout danger">
+    <div class="ct">为什么这些朴素解法会失手</div>
+    <p>
+      两个理由，都关键。<strong>其一，多数呼吸法靠的是品牌叙事，不是数据</strong>：Navy SEAL 的招牌、
+      古老传承的玄学、创始人的个人魅力——这些是<em>声誉</em>，不是证据。后面你会看到，box breathing 在一场
+      斯坦福 RCT 里<strong>输给了一个朴实得多的方法</strong>。<strong>其二，含屏息+计数的方法，在工作期间是有毒的</strong>：
+      box breathing 要你心里数 4-4-4-4 还要屏息，这恰恰<strong>和你正在做的认知任务抢同一块注意力</strong>。
+      一个需要你停下工作、闭眼、专注计数的方法，在工位上根本跑不起来。
+    </p>
+  </div>
+
+  <p>
+    所以问题不是 "要不要呼吸法"，而是<strong>怎么分清哪种真有用</strong>——哪种是数据撑起来的，哪种只是
+    叙事撑起来的；哪种能在你敲键盘的同时无声运行，哪种必须霸占你的注意力。要做这个区分，光听品牌没用，
+    得看呼吸真正能拨动的<strong>那台机器</strong>：<span style="color:var(--v1)">心率</span>与
+    <span style="color:var(--v4)">自主神经</span>构成的闭环。呼吸是少数几个你能<strong>随意</strong>操控、
+    又能反过来<strong>调制</strong>这台自动机器的旋钮。把这台机器的传递关系搞清楚，谁有用谁没用就一目了然了。
+    下一节，我们先把这台机器画成一张地图。
+  </p>
+</section>
+
+<section id="sec-map">
+  <div class="ch-num">02</div>
+  <h2>先画地图：呼吸拨动的那台机器</h2>
+
+  <p>
+    在评判任何一种呼吸法之前，先把<strong>因果链</strong>摆在桌上。这条链是整篇报告的脊梁——后面每个 lab、
+    每条证据，都挂在这条链的某一环上。读法是从左到右：你能<strong>主动控制</strong>的只有最左端
+    （呼吸频率与节律），但它会沿着这条链一路传导，最终拨动最右端你<strong>无法直接控制</strong>的东西（情绪/压力）。
+  </p>
+
+  <div class="map" aria-label="呼吸到情绪的因果链">
+    <div class="box" style="border-color:var(--v2)">呼吸频率 / 节律</div>
+    <span class="arrow">→</span>
+    <div class="box" style="border-color:var(--accent-2)">膈肌 · CO₂ + <span style="color:var(--v4)">迷走闸门</span></div>
+    <span class="arrow">→</span>
+    <div class="box" style="border-color:var(--v1)">心率振荡 RSA</div>
+    <span class="arrow">→</span>
+    <div class="box">压力反射闭环（共振）</div>
+    <span class="arrow">→</span>
+    <div class="box" style="border-color:var(--v5)">自主神经平衡</div>
+    <span class="arrow">→</span>
+    <div class="box">情绪 / 压力</div>
+  </div>
+
+  <p>
+    逐环拆开看：你<strong>降低呼吸频率</strong>（最左），膈肌行程变大、节律变缓，CO₂ 和
+    <span style="color:var(--v4)">迷走神经的闸门</span>开始随呼吸周期开合；这个闸门把呼吸节律<strong>刻进心率</strong>，
+    让心跳在吸气时变快、呼气时变慢——这就是 <span style="color:var(--v1)">RSA（呼吸性窦性心律不齐）</span>，
+    第三环。RSA 不只是个副产品：当呼吸频率正好落在某个特殊值附近，它会和
+    <strong>压力反射闭环</strong>（第四环，一个有固定延迟的负反馈环）发生<strong>共振</strong>，把心率振荡的
+    幅度放到最大。心率振荡的大小，是 <span style="color:var(--v4)">迷走</span>/<span style="color:var(--v5)">交感</span>
+    平衡（第五环）的一个可测代理；而这个平衡，最终连到你的情绪与压力（第六环）。
+  </p>
+
+  <div class="callout insight">
+    <div class="ct">为什么这张图就是 "数据 vs 品牌" 的判据</div>
+    <p>
+      每一种呼吸法，本质上都是在这条链的<strong>最左端</strong>设定一组参数：频率多少、吸呼比多少、要不要屏息、
+      用鼻还是用嘴。一旦你有了这条链的<strong>可计算模型</strong>，你就能算出任意一组参数会把右边的量推到哪——
+      于是 "哪种呼吸法有用" 不再是信仰问题，而是<strong>读数问题</strong>。Box breathing 的屏息、4-7-8 的特定
+      数字、Wim Hof 的过度通气，到底拨动了什么、是镇静还是唤醒，全都落在同一张图上一目了然。
+    </p>
+  </div>
+
+  <h3>这篇报告给你的两个收益</h3>
+
+  <p>
+    沿着这条链走完，你会拿到两样东西。<strong>收益一：用可计算的模型分清数据与品牌。</strong>
+    我们会真的把压力反射环路写成传递函数、把分钟通气写成 CO₂ 方程、把 RSA 闸门写成波形，
+    然后让你亲手滑动参数看读数怎么变——而不是背诵某个 App 的宣传语。每一条效应都会带上它的<strong>证据等级</strong>：
+    <span style="color:var(--success)">扎实</span>、<span style="color:var(--warning)">弱/有偏倚</span>、
+    还是<span style="color:var(--danger)">是个坑</span>。
+  </p>
+
+  <p>
+    <strong>收益二：给久坐工作者一个真正能用的两层方案。</strong>不是又一个 "每天冥想 20 分钟" 的口号，而是
+    分两层落地：<strong>背景层</strong>——鼻吸、呼气略长、让呼吸频率向 ~6/min 漂移，<em>零计数、零屏息</em>，
+    可以在你敲代码时无声运行；<strong>急性层</strong>——卡顿或焦虑窜上来时，做 1–3 次<strong>生理叹息</strong>
+    （双吸+长呼）当作一次快速 reset。为什么是这两层、为什么不是 box 或 Wim Hof，后面每一节都在替这个结论铺路。
+  </p>
+
+  <h3>脊梁预告</h3>
+
+  <p>
+    路线如下：先（U2）搞清呼吸<strong>为何能驱动心率</strong>（RSA 闸门）；再（U3，全篇核心）解释
+    <strong>为何 ~6/min 特殊</strong>——压力反射闭环的共振；然后（U4）拆两个迷思：<strong>呼气更长更迷走</strong>
+    其实未被证实，以及<strong>只放慢不加深</strong>反而把 CO₂ 搞乱的陷阱；接着（U5）摆开<strong>技术擂台</strong>，
+    用斯坦福 RCT 给循环叹息、box、4-7-8、Wim Hof 去魅；最后（U6）落到<strong>久坐者的最优解</strong>、
+    回答 why-not-X、自测、收尾对比表与协议卡。先用下面这个 lab 把这条链的左两端（呼吸 → 心率）
+    亲手体验一遍。
+  </p>
+
+  <div class="lab">
+    <div class="lab-title">L1 · 呼吸 → 心率 实时预览</div>
+    <canvas id="lab1-canvas" aria-label="呼吸节律驱动心率振荡的实时预览：上方为呼吸条，下方为心率轨迹"></canvas>
+    <div class="controls">
+      <div class="ctrl">
+        <label for="lab1-rate">呼吸频率 <output id="lab1-rate-out">6.0</output> 次/分</label>
+        <input type="range" id="lab1-rate" min="4" max="20" step="0.5" value="6">
+      </div>
+      <div class="ctrl" style="flex-direction:row;align-items:center;gap:10px;min-width:auto">
+        <button id="lab1-toggle" type="button">暂停</button>
+      </div>
+    </div>
+    <div class="readout" id="lab1-readout" aria-live="polite">即时心率范围：—</div>
+  </div>
+
+  <div class="callout key">
+    <div class="ct">读这张 lab 的方式</div>
+    <p>
+      上方蓝/绿条是你的呼吸：<span style="color:var(--v2)">蓝=吸气</span>、<span style="color:var(--v3)">绿=呼气</span>。
+      下方<span style="color:var(--v1)">红线是心率</span>，它<strong>跟着呼吸起伏</strong>：吸气时加速、呼气时减速——
+      这就是 RSA，第三环。这里用的是最简模型 $\mathrm{HR}(t)=\mathrm{HR}_0 - A\sin(2\pi t/T)$，
+      只为让你<em>看见</em>呼吸和心率是锁在一起的。把频率从 20 调到 6，注意红线的<strong>摆幅</strong>变化——
+      下一节我们会解释这个摆幅为什么是关键量，以及它为什么在某个频率附近最大。
+    </p>
+  </div>
+</section>
+
+
+<section id="sec-rsa">
+  <div class="ch-num">02</div>
+  <h2>呼吸为何能拨动心率——RSA 的迷走闸门</h2>
+
+  <p class="lede">上一节我们把整条主线画了出来：呼吸 → 心率振荡 → 压力反射共振 → 自主平衡。现在抓住第一根链条的第一环。一个最朴素、却几乎所有人都没认真想过的现象——你深吸一口气，心跳会<strong style="color:var(--v1)">悄悄加快</strong>；你慢慢吐出去，心跳又<strong style="color:var(--v1)">慢下来</strong>。把两根手指搭在桡动脉上，配合一次很慢的深呼吸，你能亲手摸到它。问题来了：<strong>呼吸是肺的事，心率是心脏的事，这两件事凭什么耦合？</strong></p>
+
+  <p>诱人的错误答案是"机械的"：以为吸气把胸腔撑大、静脉回流变了，于是心脏被动地跟着变。这个效应确实存在，但量级太小、相位也不对，解释不了清醒人身上几到十几 bpm 的摆幅。真正的驱动是<strong>神经的</strong>，而且是一条我们能写下来的通路。</p>
+
+  <h3>从第一性原理推这条通路</h3>
+
+  <p>窦房结（心脏的起搏点）有自己的固有放电节律，大约 100 bpm。你静息时心率只有 60–70，是因为<strong style="color:var(--v4)">迷走神经（副交感）</strong>持续踩着刹车，把它压下来。这条刹车有一个关键的物理性质：它<strong>快</strong>。迷走的递质是乙酰胆碱，作用于窦房结的离子通道几乎是<em>逐拍</em>生效、又被酶迅速清除——刹车踩下、松开都在一两秒内完成。相比之下，<strong style="color:var(--v5)">交感神经</strong>那条油门走的是 cAMP 第二信使级联，慢得多，几秒到十几秒才反应过来。</p>
+
+  <p>于是把呼吸接进来，逻辑就闭合了。脑干里产生呼吸节律的神经元群（呼吸中枢）和控制迷走输出的神经元群（疑核 / 迷走背核）是<strong>挨着的、互相投射的</strong>。呼吸节律因此对迷走输出做了<strong>相位门控（phase gating）</strong>：</p>
+
+  <div class="map">
+    <div class="box" style="border-color:var(--v2);color:var(--v2)">吸气</div>
+    <div class="arrow">→</div>
+    <div class="box">迷走输出被抑制</div>
+    <div class="arrow">→</div>
+    <div class="box">刹车松开</div>
+    <div class="arrow">→</div>
+    <div class="box" style="border-color:var(--v1);color:var(--v1)">HR↑</div>
+  </div>
+  <div class="map">
+    <div class="box" style="border-color:var(--v3);color:var(--v3)">呼气</div>
+    <div class="arrow">→</div>
+    <div class="box">迷走输出恢复</div>
+    <div class="arrow">→</div>
+    <div class="box">刹车踩回</div>
+    <div class="arrow">→</div>
+    <div class="box" style="border-color:var(--v1);color:var(--v1)">HR↓</div>
+  </div>
+
+  <p>这就是<strong>呼吸性窦性心律不齐（Respiratory Sinus Arrhythmia, RSA）</strong>。注意"心律不齐"是个历史误称——它根本不是病，而是一颗自主神经系统反应灵敏的心脏的标志。因为迷走这条刹车足够<em>快</em>，它才能在一次呼吸（几秒）的时间尺度内被门控得忽松忽紧，把心率调制出可见的摆动。交感那条油门太慢，跟不上呼吸的拍子，所以 RSA 几乎纯粹是迷走故事。</p>
+
+  <p>这一步的逻辑不要当成断言记下来，要当成<em>推导</em>：刹车快 + 脑干里两套神经元相邻互投 = 心率必然随呼吸相位摆动。把任何一个前提换掉（比如让刹车变慢），RSA 就消失。</p>
+
+  <div class="callout success">
+    <div class="ct">证据扎实 · RSA 闸门</div>
+    <p>"吸气抑制迷走→HR 升；呼气恢复迷走→HR 降"是经过几十年生理学反复验证的硬机制，不是某个流派的叙事。综述见 <strong>Lehrer &amp; Gevirtz 2014, Front. Psychol.</strong> 与 <strong>Russo et al. 2017, Breathe 13:298</strong>。后面我们会拆穿不少呼吸法的营销话术，但 RSA 闸门本身——稳的。</p>
+  </div>
+
+  <h3>把摆幅算出来：先上餐巾纸数字</h3>
+
+  <p>别急着抽象。先估个量级、建立直觉，再写公式。</p>
+
+  <p>设想你以<strong>正常的 15 次/分</strong>呼吸，一个呼吸周期 4 秒。在这 4 秒里，迷走刹车松一次、踩一次。但 4 秒太短了——刹车刚开始松、心率刚要爬上去，吸气就结束了，呼气立刻把刹车踩回来。心率根本没来得及充分摆开，峰谷差大概只有<strong style="color:var(--v1)">几个 bpm</strong>（比如在 70–75 之间晃，摆幅 ~5）。</p>
+
+  <p>现在把节奏放慢到<strong>6 次/分</strong>，周期 10 秒。吸气这一相位有整整 ~5 秒，迷走持续被压着、心率有充足时间一路爬高；呼气又有 ~5 秒，刹车稳稳踩回、心率一路滑落。同样一颗心、同样的迷走张力，仅仅因为<strong>每个相位停留得更久</strong>，心率就摆得更开——峰谷差可以到<strong style="color:var(--v1)">十几甚至二十 bpm</strong>（65 到 85 这种，摆幅 ~18）。</p>
+
+  <p>关键直觉：<strong>慢呼吸把 RSA 摆幅做大，不是因为施加了更大的力，而是因为给了同一个力更长的作用时间。</strong>这也预告了一个上限——慢到某个程度，每个相位的时间已经长到足够让心率走完它能走的全程，再慢下去摆幅就<strong>饱和</strong>了，不再线性增长。下一节会看到，这个"够久"恰好和压力反射环路的延迟撞在一起，才有了那个神奇的频率。</p>
+
+  <div class="math-block">
+    <div class="math-label">RSA-1</div>
+    <p>把上面的直觉写成一个意图清晰的玩具模型。设呼吸频率 $f$（次/分），相应周期 $T = 60/f$ 秒。把心率写成基线加一个随呼吸相位摆动的项：</p>
+    $$\mathrm{HR}(t) \;=\; \mathrm{HR}_0 \;-\; A(f, d)\,\sin\!\big(2\pi f\, t/60\big)$$
+    <p>负号是因为吸气（相位上行段）对应迷走<em>抑制</em>、HR 上升。半摆幅 $A$ 既随潮气深度 $d$ 增大，也随呼吸变慢（周期 $T$ 变长）而增大，但要<strong>饱和</strong>——用一个对 $T$ 的 Hill（S 形）饱和写出来：</p>
+    $$\begin{aligned}
+      A(f, d) &= A_{\max}\, d \,\cdot\, \frac{T^{\,n}}{T^{\,n} + T_{1/2}^{\,n}}, \\
+      T &= 60/f
+    \end{aligned}$$
+    <p class="math-note">$\dfrac{T^{n}}{T^{n}+T_{1/2}^{n}}$ 这一项就是"每个相位停留得够不够久"：当 $T \ll T_{1/2}$（呼吸快）时它 $\approx (T/T_{1/2})^{n}$，很小，摆幅被压住；当 $T \gg T_{1/2}$（呼吸够慢）时它趋于 1，摆幅<strong>撞上天花板 $A_{\max}d$</strong>，再慢也长不动了。$T_{1/2}$（lab 里取 ~7 s，约对应 8–9 次/分）是半饱和点，$n$ 控制拐弯多陡。这是个唯象的、为建直觉服务的模型，不是从离子通道推出来的——但它抓住了对的形状：快呼吸摆不开、慢呼吸摆大、再慢就饱和。下面的 lab 就用它实时算给你看。</p>
+  </div>
+
+  <div class="lab">
+    <div class="lab-title">L2 · RSA 闸门探索器</div>
+    <p style="font-size:.92rem;color:var(--ink-soft);margin:0 0 12px">拖动两个滑块，看 30 秒窗口里的<strong style="color:var(--v1)">心率轨迹 HR(t)</strong>怎么随呼吸相位摆动。背景里<strong style="color:var(--v2)">蓝色是吸气相</strong>、<strong style="color:var(--v3)">绿色是呼气相</strong>。读数里的"峰-谷 RSA 幅度"直接由上面 RSA-1 那条公式算出，不是贴图。把频率从 15 拖到 6，亲眼看摆幅长大、再看它怎么开始饱和。</p>
+    <canvas id="lab2-canvas" aria-label="RSA 闸门探索器：心率随呼吸相位摆动的 30 秒轨迹，吸气相蓝色阴影、呼气相绿色阴影"></canvas>
+    <div class="controls">
+      <div class="ctrl">
+        <label for="lab2-rate">呼吸频率 <output id="lab2-rate-out">6.0</output> 次/分</label>
+        <input type="range" id="lab2-rate" min="4" max="20" step="0.5" value="6">
+      </div>
+      <div class="ctrl">
+        <label for="lab2-depth">潮气深度 <output id="lab2-depth-out">1.00</output></label>
+        <input type="range" id="lab2-depth" min="0.5" max="1" step="0.05" value="1">
+      </div>
+    </div>
+    <div class="readout" id="lab2-readout" aria-live="polite">峰-谷 RSA 幅度：— bpm</div>
+  </div>
+
+  <div class="callout insight">
+    <div class="ct">读法</div>
+    <p>注意两件事。其一：从 15→6，蓝绿条带变宽（每个相位更久），红线摆得更开，幅度读数从 ~6 涨到 ~17 bpm。其二：继续往 5、4 拖，幅度几乎不再涨（17→19→21）——这就是 Hill 项 $\dfrac{T^{n}}{T^{n}+T_{1/2}^{n}}$ 在饱和。RSA 这个机制本身只告诉你"越慢摆幅越大、且会饱和"；它<strong>没</strong>告诉你为什么偏偏 ~6/min 是甜点。那是下一个谜。</p>
+  </div>
+
+  <div class="quiz">
+    <div class="q">关于 RSA，下面哪个说法是对的？</div>
+    <button class="opt" data-correct="1" onclick="quizPick(this,1)">心率在呼气相下降，因为迷走（副交感）刹车恢复、把窦房结压慢了</button>
+    <button class="opt" onclick="quizPick(this,0)">心率在吸气相下降，因为吸气主要靠交感油门</button>
+    <button class="opt" onclick="quizPick(this,0)">RSA 是一种需要治疗的心律失常，幅度越大越不健康</button>
+    <button class="opt" onclick="quizPick(this,0)">RSA 主要由交感神经驱动，因为交感反应更快</button>
+    <div class="fb">对的是第一个。RSA 的链条是<strong style="color:var(--v3)">呼气 → 迷走输出恢复 → 刹车踩回 → HR↓</strong>；吸气则相反（迷走被抑制、HR↑）。它由<strong style="color:var(--v4)">迷走（副交感）</strong>主导，恰恰因为迷走刹车<em>快</em>、能在一次呼吸的尺度内被门控；交感油门太慢，跟不上呼吸的拍子。而且 RSA 摆幅大通常是自主神经反应灵敏、心脏<em>健康</em>的标志，"心律不齐"只是历史误称。</div>
+  </div>
+
+  <p>我们已经把第一根链条焊死了：呼吸通过迷走闸门驱动心率振荡，而且慢呼吸能把这个振荡做大。但这里埋着一个尖锐的问题。慢一点摆幅就大一点、最后饱和——按这个逻辑，似乎"越慢越好、慢到饱和为止"就完了。可所有可靠数据都指向一个<strong>特定</strong>的频率：<strong style="color:var(--v1)">~6 次/分</strong>，而不是"能多慢就多慢"。为什么是一个<em>峰</em>，而不是一条单调爬升到顶的曲线？RSA 闸门解释不了这件事——它只是个放大器，自己没有偏好频率。要找到这个峰，我们得离开单向的"呼吸→心率"，进入一个<strong>闭环</strong>：心率会反过来调血压、血压经压力反射又回头调心率。一个有延迟的负反馈环，会在某个频率上<strong>共振</strong>。下一节，我们把这个环画出来、把那个频率算出来。</p>
+</section>
+
+
+<section id="sec-resonance">
+  <div class="ch-num">04</div>
+  <h2>共振：为什么偏偏是 <span style="color:var(--v1)">~6 次/分</span></h2>
+
+  <p>
+    上一节我们看到：把呼吸放慢，<span style="color:var(--v1)">心率</span>的振荡（RSA）会变大。直觉上你会以为这是单调的——
+    越慢越好，呼吸频率趋于零时 RSA 趋于无穷。<strong>不是</strong>。真实数据里有一个明确的<em>峰</em>：
+    在大约 <span style="color:var(--v1)">6 次/分（0.1 Hz）</span>，心率振荡幅度最大；再慢下去反而衰减。
+    这个峰不是统计巧合，也不是某个古老传统的玄学——它是一台带<strong>传输延迟的负反馈机器</strong>的本征频率。
+    这一节我们把这台机器写成一个传递函数，然后<em>算</em>出 6 次/分是从哪来的。
+  </p>
+
+  <div class="callout insight">
+    <div class="ct">问题先行</div>
+    <p>
+      为什么 RSA 不是「越慢越大」，而是在某个特定频率出现峰值？如果你只把呼吸当成一个外部驱动、把心血管当成一个无记忆的放大器，
+      你<strong>永远</strong>解释不出这个峰。要解释它，必须承认心血管系统是一个<strong>带延迟、会反过来修正自己的闭环</strong>——
+      而带延迟的负反馈，在某个频率会从「抑制」翻转成「反相增强」。那个频率，就是共振。
+    </p>
+  </div>
+
+  <h3>机制：压力反射是一个带延迟的负反馈闭环</h3>
+
+  <p>
+    先把生理画清楚。<span style="color:var(--v4)">压力反射（baroreflex）</span>是身体维持血压稳定的自动闸门：
+    颈动脉窦和主动脉弓的压力感受器测到<span style="color:var(--v5)">血压</span>升高，就经迷走神经<strong>降</strong>心率、放松血管张力；
+    血压降低则反向。这是一个标准的<strong>负反馈</strong>——偏离设定点，系统把它推回去。
+  </p>
+
+  <p>
+    Vaschillo 把这套系统拆成三个互相耦合的负反馈环（Vaschillo et al. 2002，<em>Appl. Psychophysiol. Biofeedback</em>），
+    我们只用最关键的一环：<strong>心率压力反射环</strong>。它的回路是这样闭合的——
+  </p>
+
+  <div class="map">
+    <div class="box" style="border-color:var(--v3)">呼吸驱动</div>
+    <div class="arrow">→</div>
+    <div class="box" style="border-color:var(--v1)">心率 HR</div>
+    <div class="arrow">→</div>
+    <div class="box" style="border-color:var(--v5)">血压 BP</div>
+    <div class="arrow" style="color:var(--v4)">⤸ 延迟 τ≈5 s</div>
+    <div class="box" style="border-color:var(--v4)">压力反射修正</div>
+    <div class="arrow">↩</div>
+    <div class="box" style="border-color:var(--v1)">反向调 HR</div>
+  </div>
+
+  <p>
+    关键就在那个 <strong style="color:var(--v4)">延迟 τ</strong>。心率变化推动血压，但血压的变化要<strong>过一段时间</strong>
+    才被压力感受器测到、才经神经传导回来修正心率——这条回路的总延迟约 <strong>5 秒</strong>。
+    对一个无延迟的负反馈，反馈永远在「拉回去」；但<strong>一旦反馈晚到，它就可能在错误的时刻到达</strong>：
+    等修正信号回来时，被修正的量已经摆到了反方向。这时「负反馈」在该频率上实际起的是<strong>正反馈</strong>的作用——
+    增强而非抑制。这就是共振的全部秘密。
+  </p>
+
+  <h3>推导：把闭环写成传递函数</h3>
+
+  <p>
+    把呼吸当成一个频率为 <span style="color:var(--v3)">f</span> 的正弦驱动，注入这个闭环，问：闭环对它的<strong>增益</strong>是多少？
+    设环路开环增益为 <span style="color:var(--v4)">k</span>（$0\lt k\lt 1$，回路是稳定的负反馈），延迟为 <span style="color:var(--v4)">τ</span> 秒。
+    一个延迟 τ 在频域里就是相位旋转因子 $e^{-j\omega\tau}$（$\omega=2\pi f$）——延迟不改变幅度，只把信号在时间上推后、等价于在每个频率上转一个角度 $\omega\tau$。
+    带延迟负反馈闭环对外部驱动的响应，标准形式是：
+  </p>
+
+  <div class="math-block">
+    <div class="math-label">闭环增益 · 延迟负反馈</div>
+    $$ |H(f)| \;=\; \frac{1}{\bigl|\,1 + k\,e^{-j\omega\tau}\,\bigr|}, \qquad \omega = 2\pi f $$
+    <div class="math-note">
+      分母里那个 <code>+1</code> 是负反馈的标志（设定点固定）；<code>k·e^{-jωτ}</code> 是绕一圈回来的反馈，
+      带着延迟攒下的相位。整条曲线的形状，全压在「分母能被推到多小」这一个问题上。
+    </div>
+  </div>
+
+  <p>
+    现在把分母拆成实部虚部，照实算。用 $e^{-j\omega\tau}=\cos(\omega\tau)-j\sin(\omega\tau)$：
+  </p>
+
+  <div class="math-block">
+    <div class="math-label">分母的模 · 实部虚部</div>
+    $$
+    \begin{aligned}
+    1 + k\,e^{-j\omega\tau} &= \bigl(1 + k\cos\omega\tau\bigr) \;-\; j\,k\sin\omega\tau \\[4pt]
+    \bigl|\,1 + k\,e^{-j\omega\tau}\,\bigr| &= \sqrt{\bigl(1 + k\cos\omega\tau\bigr)^2 + \bigl(k\sin\omega\tau\bigr)^2} \\[4pt]
+    &= \sqrt{\,1 + 2k\cos\omega\tau + k^2\,}
+    \end{aligned}
+    $$
+    <div class="math-note">
+      展开后那个交叉项 <code>2k·cos(ωτ)</code> 就是全部戏剧所在：<code>cos</code> 在 ±1 之间摆，分母随之被抬高或压低。
+    </div>
+  </div>
+
+  <p>
+    什么时候分母最小、$|H|$ 最大？看那个交叉项 $2k\cos\omega\tau$——它在 $\cos\omega\tau=-1$ 时取最负值，
+    把分母压到 $\sqrt{1-2k+k^2}=|1-k|$。而 $\cos\omega\tau=-1$ 的条件是：
+  </p>
+
+  <div class="math-block">
+    <div class="math-label">共振条件 · 延迟 = 半周期</div>
+    $$
+    \begin{aligned}
+    \omega\tau &= \pi \quad\Longleftrightarrow\quad 2\pi f_{\text{res}}\,\tau = \pi \\[6pt]
+    \boxed{\,f_{\text{res}} \;\approx\; \frac{1}{2\tau}\,} \qquad &\text{即}\quad \tau = \tfrac{1}{2}T_{\text{res}}\ \ (\text{延迟正好是半个周期})
+    \end{aligned}
+    $$
+    <div class="math-note">
+      $\omega\tau=\pi$ 的物理意义最干净：反馈信号晚到了<strong>半个周期</strong>，
+      到达时被驱动的量正好摆到了反方向——「负反馈」的负号，被这半周期延迟又翻了一次符号，于是变成<strong>同相增强</strong>。
+      峰高 $|H|_{\max}=1/|1-k|$：$k$ 越接近 1，峰越尖越高。
+    </div>
+  </div>
+
+  <h3>餐巾纸算一遍：5 秒延迟 → 6 次/分</h3>
+
+  <p>
+    现在把心率压力反射环的实测延迟 $\tau\approx 5\text{ s}$ 代进去——别先看结论，自己算：
+  </p>
+
+  <div class="math-block">
+    <div class="math-label">napkin · HR 压力反射环</div>
+    $$
+    \begin{aligned}
+    \tau = 5\ \text{s} \;&\Rightarrow\; T_{\text{res}} = 2\tau = 10\ \text{s} \\[3pt]
+    f_{\text{res}} = \frac{1}{T_{\text{res}}} = \frac{1}{10\ \text{s}} &= 0.1\ \text{Hz} \;=\; 0.1 \times 60 = \mathbf{6\ \text{次/分}}
+    \end{aligned}
+    $$
+    <div class="math-note">
+      延迟 5 秒 → 周期 10 秒 → 0.1 Hz → 6 次/分。整条「慢呼吸到 6 次/分」的功效叙事，
+      数值上就坐落在这一行算术上。
+    </div>
+  </div>
+
+  <p>
+    再算第二个环作为对照。Vaschillo 的第二环是<span style="color:var(--v5)">血管张力压力反射环</span>——
+    血压通过改变外周血管张力来调节，这条通路<strong>更慢</strong>，延迟约 $\tau\approx 15\text{ s}$：
+    $f_{\text{res}}=1/(2\times15)\approx 0.033\text{ Hz}\approx 2\text{ 次/分}$。
+    这正是为什么人体 HRV 频谱在低频段（LF/Mayer 波）有一个 ~0.1 Hz 的峰，更低处还有更慢的成分——
+    它们对应的是<strong>不同延迟的不同环</strong>，每个环都把自己的 $1/(2\tau)$ 印在频谱上。
+    Bernardi 等人观察到念珠祈祷和瑜伽 mantra 都自发把呼吸带到 ~6/分（Bernardi et al. 2001，
+    <em>BMJ</em> 323:1446），不是因为传统知道 0.1 Hz，而是因为它们恰好踩中了这台机器的本征频率。
+  </p>
+
+  <h3>相位：谁在驱动谁</h3>
+
+  <p>
+    共振还有一个可证伪的指纹，在<strong>相位</strong>里。在共振点上：
+  </p>
+  <ul>
+    <li><span style="color:var(--v1)">HR</span> 与 <span style="color:var(--v5)">BP</span> 约 <strong>180° 反相</strong>——
+      心率升时血压（经那半周期延迟）正在反向，这正说明<strong>压力反射在驱动</strong>这对振荡，而不是被动跟随；</li>
+    <li><span style="color:var(--v1)">HR</span> 与 <span style="color:var(--v3)">呼吸</span> 约 <strong>0° 同相</strong>——
+      吸气心率升、呼气心率降，呼吸像外部节拍器把整个环锁在它的频率上（Lehrer 的共振呼吸训练正是利用这一点）。</li>
+  </ul>
+  <p>
+    一句诚实提醒：这两个相位角是<strong>模型相关</strong>的，依赖你怎么定义环路、在哪测、个体差异有多大——
+    把它们当成定性的方向指纹，<strong>别当硬常数</strong>去背。
+  </p>
+
+  <p>
+    下面这台模拟器把上面整条推导做成可拖的。它在浏览器里用<strong>真实复数运算</strong>逐点算 $|H(f)|$、
+    数值找峰、画出 $1/(2\tau)$ 的标线。拖 τ 看峰怎么平移，拖 k 看峰怎么变尖，
+    再把你自己的呼吸频率拖上去，读出「你此刻的 HRV 增益」。
+  </p>
+  <p>
+    一个诚实的工程细节：纯 $1/|1+k\,e^{-j\omega\tau}|$ 在 $\omega\tau=\pi,3\pi,5\pi\dots$（即 $f=1/(2\tau),3/(2\tau),\dots$）
+    会出现<strong>等高的一串峰</strong>——数学上谐波都共振。但真实压力反射回路是<strong>低通</strong>的：心脏和血管在积分，
+    高频被衰减。所以模拟器在传递函数里乘了一个一阶低通 $G(f)=1/\sqrt{1+(f/f_c)^2}$（$f_c\approx0.15$ Hz），
+    把谐波压掉、只留<strong>基频</strong>那个峰——这才是我们关心的 ~6/分。看到的峰因此会比纯 $1/(2\tau)$ 略低一点点，这是回路有限带宽的代价，不是 bug。
+  </p>
+
+  <div class="lab" id="lab3-wrap">
+    <div class="lab-title">Lab 3 · 压力反射共振模拟器 · |H(f)| = 1 / |1 + k·e^(−jωτ)|</div>
+    <canvas id="lab3-canvas" aria-label="压力反射闭环增益曲线：横轴呼吸频率（次/分），纵轴闭环增益 |H(f)|。曲线由延迟负反馈传递函数逐点用复数运算算出；标出数值找到的峰、1/(2τ) 共振标线、以及当前呼吸频率处的竖直读数线。"></canvas>
+    <div class="controls">
+      <div class="ctrl">
+        <label for="lab3-tau">回路延迟 τ = <output id="lab3-tau-out">5.0</output> s</label>
+        <input type="range" id="lab3-tau" min="3" max="8" step="0.1" value="5">
+      </div>
+      <div class="ctrl">
+        <label for="lab3-k">环路增益 k = <output id="lab3-k-out">0.85</output></label>
+        <input type="range" id="lab3-k" min="0.3" max="0.95" step="0.01" value="0.85">
+      </div>
+      <div class="ctrl">
+        <label for="lab3-br">你的呼吸频率 = <output id="lab3-br-out">6.0</output> 次/分</label>
+        <input type="range" id="lab3-br" min="4" max="20" step="0.1" value="6">
+      </div>
+    </div>
+    <div class="readout" id="lab3-readout" aria-live="polite"></div>
+  </div>
+
+  <div class="callout insight">
+    <div class="ct">~6 次/分不是玄学，是本征频率</div>
+    <p>
+      把上面所有滑块拨回 τ=5、k=0.85，峰就坐在 6 次/分。这不是某个流派的口诀，
+      是「延迟 5 秒的负反馈机器」的<strong>本征频率</strong>——你呼吸踩在它上面，每一次吸气推动的心率振荡，
+      都被半周期后回来的压力反射信号同相叠加，振幅被放到最大。
+      需要补一句诚实：人群均值约 5.5/分，<strong>个体共振频率在 4.5–6.5/分之间因人而异</strong>
+      （取决于你那条回路的实际延迟，身高、血压、年龄都会动它）。
+      所以「6 次/分」是中心值，不是对每个人都精确成立的魔数——你自己的峰，得用上面这台仪器（或真实 HRV biofeedback）去找。
+    </p>
+  </div>
+
+  <div class="callout success">
+    <div class="ct">证据扎实</div>
+    <p>
+      共振频率 ~0.1 Hz、机制为压力反射闭环共振：Lehrer &amp; Gevirtz 2014（<em>Front. Psychol.</em>）综述、
+      Vaschillo et al. 2002 三环模型（n=5）。下面 Lab 3b 是 Bernardi 2001 的实测压力反射敏感度，
+      可独立验证「带到 6/分」这件事确实改变了生理量。机制与方向都站得住；具体增益曲线的形状是模型示意，别拿去当个人诊断。
+    </p>
+  </div>
+
+  <div class="lab" id="lab3b-wrap">
+    <div class="lab-title">Lab 3b · 实测数据 · 压力反射敏感度 BRS（Bernardi 2001 BMJ，n=23）</div>
+    <canvas id="lab3b-canvas" aria-label="两柱条形图，实测数据：静息自由呼吸时压力反射敏感度约 9.5 ms/mmHg，引导到约 6 次/分慢呼吸时升到约 11.5 ms/mmHg，P 小于 0.05。"></canvas>
+    <div class="readout" id="lab3b-readout" aria-live="polite"></div>
+  </div>
+
+  <div class="quiz">
+    <div class="q">某人的心率压力反射环延迟实际是 4 秒（而非典型的 5 秒）。其它不变，他的个人共振频率应该在哪？</div>
+    <button class="opt" data-correct="0" onclick="quizPick(this,0)">还是 6 次/分——6/分是固定的生理常数</button>
+    <button class="opt" data-correct="1" onclick="quizPick(this,1)">约 7.5 次/分——延迟短 → 半周期短 → 共振频率高</button>
+    <button class="opt" data-correct="0" onclick="quizPick(this,0)">约 4.8 次/分——延迟短 → 共振频率低</button>
+    <button class="opt" data-correct="0" onclick="quizPick(this,0)">无法确定，共振与延迟无关</button>
+    <div class="fb">
+      $f_{\text{res}}\approx 1/(2\tau)=1/(2\times 4\text{ s})=0.125\text{ Hz}=7.5\text{ 次/分}$。
+      延迟越短，半周期越短，共振频率越<strong>高</strong>。这也正是个体共振频率落在 4.5–6.5/分区间的原因——
+      每个人的回路延迟不同。排掉第三个选项的关键：延迟短意味着反馈回来得快、要匹配它就得呼吸得快一点（频率高），不是慢。
+    </div>
+  </div>
+</section>
+
+
+<section id="sec-exhale">
+  <div class="ch-num">04</div>
+  <h2>两个被反复转述、却经不起算的说法</h2>
+
+  <p>
+    到这里主线已经立住：把呼吸压到 <strong style="color:var(--v3)">~6/min</strong>，
+    <strong style="color:var(--v1)">心率振荡(RSA)</strong>最大、压力反射环路共振、
+    <strong style="color:var(--v4)">迷走</strong>占上风。顺着这条线，社交媒体长出了两条"优化技巧"，
+    几乎成了慢呼吸的常识。它们听起来都顺理成章——也正因为顺理成章，没人去算。
+    这一节我们把两条都拆开：一条是<strong>纠结呼气比例</strong>，另一条是<strong>只顾压频率</strong>。
+    第一条被一个 RCT 证伪，第二条会把你推进生理学的反方向。
+  </p>
+
+  <h3>A · "呼气越长越迷走"——闸门是真的，比例优势是编的</h3>
+
+  <p>
+    先说对的部分。RSA 有一道<strong style="color:var(--v4)">迷走闸门</strong>：
+    <strong style="color:var(--v2)">吸气</strong>时延髓抑制迷走输出 → 心率升；
+    <strong style="color:var(--v3)">呼气</strong>时迷走恢复 → 心率降。这是 solid 的——你在 §02 的 Lab 里亲手见过这条波形。
+    于是流行说法顺势推一步：既然呼气段是迷走"工作"的窗口，那把呼气拉长（吸:呼 = 1:2 而不是 1:1），
+    迷走干活的时间更长，测出来的 HRV 应该更高。
+  </p>
+
+  <div class="callout danger">
+    <div class="ct">坑 · 反直觉</div>
+    <p>
+      "闸门为真" <strong style="color:var(--v1)">推不出</strong> "延长呼气比 → 更高迷走/HRV"。
+      这一步把一个<em>瞬时</em>的方向（呼气段 HR 在降）偷换成了一个<em>整周期平均</em>的结论
+      （整段 HRV 指标更高）。瞬时降不等于平均高——把波形画出来你会发现，呼气拉长只是改变了
+      心率振荡的<strong>形状</strong>，峰到谷的<strong>幅度</strong>几乎没动。而 RMSSD、HF 功率这些指标量的正是幅度。
+    </p>
+  </div>
+
+  <p>
+    这不是推测，是被直接测过的。<strong>Meehan &amp; Shaffer 2024</strong>（<em>Appl. Psychophysiol. Biofeedback</em> 49:407）
+    做了两次 within-subject RCT（合计 n=42），在固定 <strong style="color:var(--v3)">6/min</strong> 下让同一批人分别用
+    <strong>1:1</strong> 和 <strong>1:2</strong> 呼吸，量全套 HRV 指标。结果——
+  </p>
+
+  <table class="cmp">
+    <thead><tr><th>对照（6/min, within-subject）</th><th>1:1</th><th>1:2（呼气更长）</th><th>差异</th></tr></thead>
+    <tbody>
+      <tr><td>RMSSD (ms)</td><td>65.2</td><td>69.8</td><td><strong style="color:var(--v1)">p = .26（不显著）</strong></td></tr>
+      <tr><td>其余 HRV 指标</td><td colspan="2" style="text-align:center">两组互有高低</td><td><strong style="color:var(--v1)">全部 n.s.</strong></td></tr>
+    </tbody>
+  </table>
+
+  <p>
+    所有 HRV 指标<strong>无显著差异</strong>。69.8 比 65.2 大，但 p=.26——这点差距落在噪声里，
+    换一批人方向都可能反过来。Laborde（2021/2022）也指出整个 I:E 文献彼此打架，没有一致结论。
+    把这两件事并排放，结论很干净：
+  </p>
+
+  <div class="callout success">
+    <div class="ct">证据扎实 · 该记住的那一条</div>
+    <p>
+      <strong>把频率降到 ~6/min 这件事本身，远比纠结吸呼比例重要。</strong>
+      RSA 闸门当事实用（呼气段确实在恢复迷走）；但"1:2 比 1:1 更迷走"是个<em>合理却未被证实</em>的假设，
+      被 n=42 的 RCT 按住了。你可以用任何让自己舒服的比例——别把"必须 1:2"当成纪律去执行，那是在优化一个不存在的旋钮。
+    </p>
+  </div>
+
+  <p>
+    下面这个 Lab 就是上面那张表的可视化版：固定 6/min，只动 I:E 滑块，看波形<strong>形状</strong>怎么扭，
+    再看峰-谷<strong>幅度</strong>读数——它会顽固地几乎不动。这是诚实地把一个 null result 画给你看。
+  </p>
+
+  <div class="lab" id="lab4">
+    <div class="lab-title">Lab 4 · BREAK-IT ①：I:E 比探索器——波形会变形，HRV 指标不动</div>
+    <p style="margin:.2rem 0 .6rem;color:var(--ink-soft);font-size:.92rem">
+      固定 <strong style="color:var(--v3)">6/min</strong>（周期 10 s）。拖动 I:E 滑块从 1:1 拉到 1:3——
+      <strong style="color:var(--v2)">吸气</strong>段被压短、<strong style="color:var(--v3)">呼气</strong>段被拉长，
+      <strong style="color:var(--v1)">心率曲线</strong>的形状随之变得不对称。但右侧读出的<strong>峰-谷 RSA 幅度</strong>
+      （= HRV 指标量的东西）几乎是条常数。形状变了，指标没变——这正是 Meehan &amp; Shaffer 看到的。
+    </p>
+    <div class="controls">
+      <div class="ctrl">
+        <label for="lab4-ie">I:E 比（吸 : 呼）</label>
+        <input type="range" id="lab4-ie" min="1" max="3" step="0.05" value="1">
+        <output id="lab4-ie-out">1 : 1.0</output>
+      </div>
+    </div>
+    <canvas id="lab4-canvas" aria-label="I:E 比探索器。固定 6 次每分钟的呼吸，周期 10 秒。一条蓝绿色曲线表示呼吸相位（吸气段蓝、呼气段绿），下方一条红色曲线表示由 RSA 闸门模型算出的瞬时心率：吸气时心率升、呼气时心率降。拖动 I:E 滑块从 1:1 到 1:3 时，吸气段在时间轴上被压缩、呼气段被拉伸，红色心率曲线的波形变得左右不对称；但其峰到谷的振荡幅度由滑块旁的读数显示，随比例变化几乎保持为常数。"></canvas>
+    <div class="readout" id="lab4-readout" aria-live="polite"></div>
+  </div>
+
+  <p>
+    幅度读数在整段拖动里大概只在 <code>±2%</code> 内晃——而那是模型里我故意留的一点形状耦合，真实生理里连这点都未必稳。
+    你拖出来的，就是 p=.26 的那张图：肉眼可见波形变了，可 HRV 的尺子量不到差别。
+  </p>
+
+  <h3>B · "只要呼吸够慢就好"——慢而浅，是把自己闷成低通气</h3>
+
+  <p>
+    第二条更隐蔽，因为它不是一句口号，而是一个<em>省略</em>：所有人都在说"慢呼吸好"，
+    却没人提醒慢呼吸有个必须配套的动作。先把唯一需要的公式摆出来——它就是个定义，但这个定义决定生死。
+  </p>
+
+  <div class="math-block">
+    <div class="math-label">通气</div>
+    $$\dot V_A \;=\; f\,(V_t - V_D)$$
+    <div class="math-note">
+      肺泡通气 $\dot V_A$ = 呼吸频率 $f$ × <strong>有效</strong>潮气量。关键在 $V_D$：
+      每口气里有约 $V_D \approx 150$ mL 卡在气管/支气管这段<strong>死腔</strong>——它根本到不了肺泡、不参与气体交换，
+      纯属来回搬运。真正换气的只有 $(V_t - V_D)$ 这部分。死腔是个固定的"过路费"，每口气都得先扣掉它。
+    </div>
+  </div>
+
+  <div class="math-block">
+    <div class="math-label">CO₂ 平衡</div>
+    $$PaCO_2 \;\propto\; \frac{\dot V_{CO_2}}{\dot V_A}$$
+    <div class="math-note">
+      身体产 <strong style="color:var(--accent-2)">CO₂</strong> 的速率 $\dot V_{CO_2}$ 在静息时基本恒定（代谢决定）。
+      血里的 $PaCO_2$ 就是"产出 ÷ 排出"——分母 $\dot V_A$ 是你<strong>排</strong> CO₂ 的能力。
+      $\dot V_A$ 太小 → CO₂ 排不掉、堆在血里（低通气，$PaCO_2$ 升，酸）；
+      $\dot V_A$ 太大 → CO₂ 排太狠（过度通气，$PaCO_2$ 降，呼吸性碱中毒，就是 Wim Hof 那条路）。
+    </div>
+  </div>
+
+  <p>
+    现在把"慢而浅"代进去。注意 $f$ 在<strong>外面</strong>乘整个括号，<em>死腔却每口都扣</em>——所以频率掉得越狠，
+    死腔的相对损耗越大。这就是为什么不能只动 $f$。先算具体数：
+  </p>
+
+  <div class="callout warning">
+    <div class="ct">napkin · 三组数，差距比直觉大</div>
+    <p>
+      <strong style="color:var(--v1)">做错的慢呼吸</strong>（6/min × 400 mL，潮气量没补）：
+      $\dot V_A = 6 \times (400 - 150) = 6 \times 250 = \mathbf{1500}$ mL/min。<br>
+      <strong style="color:var(--v3)">正常静息</strong>（12/min × 500 mL）：
+      $\dot V_A = 12 \times (500 - 150) = 12 \times 350 = \mathbf{4200}$ mL/min。<br>
+      慢而浅把肺泡通气砍到正常的 <strong>~36%</strong>——你以为在"养生"，
+      实际把自己推进<strong style="color:var(--accent-2)">低通气</strong>：CO₂ 滞留、血变酸、可能头晕。频率只是表面，
+      <em>有效</em>通气才是真变量。
+    </p>
+  </div>
+
+  <p>
+    救法不神秘，就藏在公式里：$f$ 降一半，就得把 $(V_t - V_D)$ 拉大去补，让乘积 $\dot V_A$ 落回正常区。
+    所以<strong>正确的慢呼吸 = 降频率 + 增潮气量</strong>——深而慢，不是浅而慢。算一下 6/min × 900 mL：
+    $\dot V_A = 6 \times (900-150) = 6 \times 750 = 4500$ mL/min，落回正常带。
+    这也顺手回答了一个常见误会："慢呼吸是不是过度通气？" ——不是。过度通气是 $\dot V_A$ <em>太大</em>，
+    而配了潮气量的慢呼吸 $\dot V_A$ 正常，甚至略低，方向<strong>相反</strong>。
+  </p>
+
+  <div class="callout insight">
+    <div class="ct">为什么"保住一点 CO₂"反而帮供氧（只作定性）</div>
+    <p>
+      Bohr 效应：血里 CO₂ 偏高时，血红蛋白对氧的亲和力下降，更<em>愿意</em>在组织里把氧卸下来。
+      所以深而慢、不刻意把 CO₂ 冲掉的呼吸，理论上有利于组织端卸氧。
+      <strong>但只到定性为止</strong>——"慢呼吸→高 CO₂→Bohr→供氧更好"被量化成具体数字的地方，
+      来源都是商业博客，没有可靠对照。机制成立 ≠ 效应被测准。记方向，别记数字。
+    </p>
+  </div>
+
+  <p>
+    下面的计算器把这三组数（和 Wim Hof 那一极）做成可拖的：选 $f$、选 $V_t$，
+    它按上面两条公式实时算出 $PaCO_2$ 并判定状态。预设按钮直接跳到三个典型点——亲手撞一次低通气和碱中毒。
+  </p>
+
+  <div class="lab" id="lab5">
+    <div class="lab-title">Lab 5 · BREAK-IT ②：分钟通气 / CO₂ 计算器——慢而浅会闷出高 CO₂</div>
+    <p style="margin:.2rem 0 .6rem;color:var(--ink-soft);font-size:.92rem">
+      模型 = 上面两条公式：$\dot V_A = f\,(V_t - 150)$，$PaCO_2 = K\cdot \dot V_{CO_2}/\dot V_A$，
+      常数 $K$ 已定标到正常点（12/min × 500 mL → $PaCO_2 \approx 40$ mmHg）。
+      拖频率与潮气量，看 $PaCO_2$ 落在哪个带：
+      <strong style="color:var(--v3)">正常 35–45</strong> / <strong style="color:var(--v5)">低通气·高 CO₂</strong> /
+      <strong style="color:var(--accent-2)">过度通气·低 CO₂（碱中毒）</strong>。
+    </p>
+    <div class="controls">
+      <div class="ctrl">
+        <label for="lab5-f">呼吸频率 f (次/min)</label>
+        <input type="range" id="lab5-f" min="4" max="30" step="1" value="12">
+        <output id="lab5-f-out">12</output>
+      </div>
+      <div class="ctrl">
+        <label for="lab5-vt">潮气量 V_t (mL)</label>
+        <input type="range" id="lab5-vt" min="300" max="1500" step="10" value="500">
+        <output id="lab5-vt-out">500</output>
+      </div>
+    </div>
+    <div class="controls" style="margin-top:10px">
+      <button id="lab5-p1" class="ghost">慢但浅（做错）· 6×400</button>
+      <button id="lab5-p2" class="ghost">Wim Hof 过度通气 · 30×1000</button>
+      <button id="lab5-p3">正确慢呼吸 · 6×900</button>
+    </div>
+    <canvas id="lab5-canvas" aria-label="分钟通气与二氧化碳计算器。横向显示动脉二氧化碳分压 PaCO2 的刻度条，从低到高分为三个带：过度通气低二氧化碳带（青色，碱中毒）、正常带 35 到 45 毫米汞柱（绿色）、低通气高二氧化碳带（琥珀色）。一个指针标出当前由公式算出的 PaCO2 值，其位置与颜色随频率和潮气量两个滑块实时变化。下方文字显示肺泡通气量的计算式与代入数值。"></canvas>
+    <div class="readout" id="lab5-readout" aria-live="polite"></div>
+  </div>
+
+  <div class="quiz" id="quiz-exhale">
+    <div class="q">
+      一个人把呼吸从 12/min × 500 mL 改成 6/min × 500 mL（只压了频率，潮气量没动），
+      还很满意自己"慢下来了"。他血里的 $PaCO_2$ 会怎样？
+    </div>
+    <button class="opt" data-correct="0" onclick="quizPick(this,0)">不变——频率减半、每口气量不变，换气总量自动守恒</button>
+    <button class="opt" data-correct="1" onclick="quizPick(this,1)">升高——肺泡通气掉到约一半，CO₂ 排不掉，滑向低通气</button>
+    <button class="opt" data-correct="0" onclick="quizPick(this,0)">降低——呼吸慢=更放松=代谢降，产的 CO₂ 少了</button>
+    <button class="opt" data-correct="0" onclick="quizPick(this,0)">降低——慢呼吸就是慢，慢一定意味着把 CO₂ 冲掉</button>
+    <div class="fb">
+      正确：升高。$\dot V_A = f\,(V_t - V_D)$，$f$ 减半而 $(V_t-V_D)$ 不变 → $\dot V_A$ 减半
+      （$4200 \to 2100$ mL/min 量级），而 $PaCO_2 \propto \dot V_{CO_2}/\dot V_A$、静息 $\dot V_{CO_2}$ 不变 →
+      $PaCO_2$ 升、滑向<strong style="color:var(--v5)">低通气</strong>。选项三把因果搞反了（慢呼吸不显著降代谢）；
+      选项四把"慢"和"过度通气"混了——过度通气是 $\dot V_A$ <em>太大</em>，正相反。
+      正解是配上更大的潮气量：6/min 要搭 ~900 mL 才把 $\dot V_A$ 拉回正常。
+    </div>
+  </div>
+
+  <p>
+    两条"技巧"拆完，留下的是同一句朴素结论：<strong style="color:var(--v3)">慢到 ~6/min，深一点，别数比例、别屏息冲 CO₂</strong>。
+    下一节进擂台——把循环叹息、box、4-7-8、Wim Hof 摆上去，用同样的"能不能算"标准，看哪些是数据、哪些是品牌。
+  </p>
+</section>
+
+
+<section id="sec-bakeoff">
+  <div class="ch-num">05</div>
+  <h2>技术擂台：去魅 + 斯坦福 RCT</h2>
+
+  <p class="lede">市面上的呼吸法像保健品货架——每一瓶都印着“减压、专注、长寿”。这一节我们用数据给它们排座次，
+  唯一的规则是：<strong>分清“有数据”和“有品牌”</strong>。一个技术的名气大小，和它被测出来的效应大小，几乎是两条互不相干的曲线。</p>
+
+  <p>前四节建好了一台“计算引擎”：呼吸节律 → <span style="color:var(--v1)">RSA</span> 闸门 → 压力反射闭环共振（~6/min）→
+  <span style="color:var(--accent-2)">CO₂</span> 守恒。现在把流行呼吸法逐个塞进这台引擎，看哪些落在它预测的甜区，哪些只是叙事。
+  每条结论我都挂上证据等级——<span style="color:var(--success);font-weight:600">扎实</span>、
+  <span style="color:var(--warning);font-weight:600">弱/有偏倚</span>、
+  <span style="color:var(--danger);font-weight:600">坑/反直觉</span>——这本身就是本节的脊梁。</p>
+
+  <h3>第一名（有数据）：循环叹息 / 生理叹息</h3>
+
+  <p><strong>动作</strong>：一次正常吸气后，鼻子<em style="color:var(--v2)">再补一小口</em>（双吸），然后嘴巴<em style="color:var(--v3)">长长地呼出</em>。
+  这是哺乳动物天生的“叹息”——你哭过之后、睡着前、松一口气时身体自动做的那个动作。</p>
+
+  <p><strong>生理为什么成立</strong>：肺不是一个匀质气球，是几亿个肺泡。久坐浅呼吸时，一部分肺泡会塌陷（atelectasis）。
+  第二口补吸的作用是<strong>把已塌陷的肺泡重新撑开</strong>——这是单次深吸做不到的，因为塌陷肺泡的开启压很高，
+  需要在“已经充了一程气”的基础上再加一程才掰得开。随后的<span style="color:var(--v3)">长呼</span>把积存的
+  <span style="color:var(--accent-2)">CO₂</span> 一次卸掉，并通过 RSA 闸门让<span style="color:var(--v4)">迷走</span>回归、
+  <span style="color:var(--v1)">心率</span>下沉。双吸重张 + 长呼卸气，正好同时命中我们前面建的两条机制。</p>
+
+  <div class="callout success">
+    <div class="ct">证据扎实 · Balban et al. 2023</div>
+    <p>Balban、Spiegel、Huberman 等，<em>Cell Reports Medicine</em> 2023，RCT <strong>n=111</strong>，5 分钟/天 × 28 天，4 臂随机对照：
+    循环叹息 / box breathing / 循环过度通气（Wim-Hof 样）/ 正念冥想对照。</p>
+    <p>结果：<strong>循环叹息的正性情绪日增最大</strong>（~+1.91/天，正念对照 ~+1.22），
+    且是<strong>唯一显著降低静息呼吸频率</strong>的臂——说明它的效果会“外溢”到不练的时段，把基线呼吸都带慢了。
+    这是 workday 急性 reset 目前最硬的一份证据：真随机、真对照、有头对头比较。
+    （诚实边界：单一研究、健康人群、自报情绪量表，非客观生标——但在一堆“靠故事”的技术里，它是唯一在 head-to-head 里赢了的。）</p>
+  </div>
+
+  <div class="lab">
+    <div class="lab-title">L6 · 斯坦福 RCT 实测：正性情绪日增</div>
+    <canvas id="lab6-canvas" aria-label="斯坦福 RCT 四臂正性情绪日增条形图，实测数据 n=111"></canvas>
+    <div class="readout" id="lab6-readout" aria-live="polite"></div>
+    <p class="math-note">实测数据 n=111，Balban et al. 2023，<em>Cell Rep Med</em>。
+    <strong>实心条</strong>=研究报告的确切数（循环叹息 1.91、正念 1.22）；
+    <strong>描边空心条</strong>=只有方向性结论（box / 循环过度通气：介于二者之间且小于叹息），标“≈方向性”，<em>不是</em>精确数。
+    视觉上把“实测”和“仅示意”分清楚——这正是本节的纪律。</p>
+  </div>
+
+  <h3>第二名（较扎实）：膈式慢呼吸</h3>
+
+  <p>用膈肌（而非胸廓上抬）做慢而深的呼吸。<strong>Ma et al. 2017</strong>，<em>Front. Psychol.</em>，RCT n=40，~4/min 训练 8 周：
+  <strong>皮质醇显著下降、持续注意力上升</strong>。关键加分项是它带了<strong>客观生物标志</strong>（皮质醇），
+  不只靠自报问卷——这让它比一众“感觉变好”的技术更可信。机制上它就是把你拉向共振区、并通过增大潮气量避免低通气，
+  和我们引擎的预测完全一致。</p>
+
+  <h3>合理但被夸大：鼻呼吸</h3>
+
+  <p>鼻腔不是被动管道。鼻旁窦持续分泌<strong style="color:var(--v4)">一氧化氮 NO</strong>，随吸气进肺，
+  扩张肺血管、改善通气/灌注匹配，使鼻吸比口吸约 <strong>+10% 动脉氧合</strong>（无肺病者）。
+  低流速时窦腔放出的 NO 更多——所以<strong>慢鼻吸</strong>吸入的 NO 也更多。这部分生理是 solid 的（Lundberg 系列, 2008）。</p>
+
+  <div class="callout warning">
+    <div class="ct">证据弱 · 别买夸大叙事</div>
+    <p>NO + ~10% 氧合是真的；但 Nestor《Breath》式把鼻呼吸包装成“治百病、提升运动表现、改善脸型”的宣称<strong>远超数据支撑</strong>。
+    把鼻呼吸当成一个<strong>零成本的默认背景设置</strong>（它不占注意力），而不是灵丹妙药。</p>
+  </div>
+
+  <h3 style="color:var(--danger)">去魅时刻：名气 ≠ 效应</h3>
+
+  <p>下面三个是“品牌远大于数据”的代表。把它们和上面的对照看，本节的论点就立住了。</p>
+
+  <div class="callout danger">
+    <div class="ct">Box breathing 4-4-4-4 · 声誉非数据</div>
+    <p>4 秒吸、4 秒屏、4 秒呼、4 秒屏。它的全部权威来自 <strong>Navy SEAL / Mark Divine</strong> 的背书——一个“硬汉都用它”的叙事。
+    但在上面那份斯坦福头对头 RCT 里，box breathing <strong>输给了循环叹息</strong>。
+    更糟的是它含两段<strong>屏息</strong>：对久坐工作者，屏息正是 screen apnea 的放大版，会让 <span style="color:var(--accent-2)">CO₂</span> 滞留、
+    并占用注意力去数拍子。Mostly anecdotal。</p>
+  </div>
+
+  <div class="callout danger">
+    <div class="ct">4-7-8 · 数字不特殊</div>
+    <p>4 秒吸、7 秒屏、8 秒呼（Andrew Weil）。小样本确有急性的 ↓HR / ↑HF-HRV 效应——但那主要来自“呼吸变慢了”，
+    而不是 4:7:8 这组特定数字。对照显示，单纯把节律带到 <strong>~6/min 的慢呼吸抬 HRV 更多</strong>。
+    也就是说，<strong>是“慢”，不是这个魔法配比</strong>在起作用；而且它同样塞了一段长屏息。Low quality。</p>
+  </div>
+
+  <div class="callout danger">
+    <div class="ct">Wim Hof / 循环过度通气 · 方向相反 + 有风险</div>
+    <p>~30 次快深呼吸 + 长屏息，循环数轮。它制造急性<strong>呼吸性碱中毒</strong>（pH 可达 ~7.75）、
+    <span style="color:var(--v5)">肾上腺素约 2×</span>、有抗炎效应（Kox et al. 2014, <em>PNAS</em>, RCT n=24，内毒素模型）。
+    注意它是一个<strong>唤醒/应激技术，与镇静方向相反</strong>——<span style="color:var(--v5)">交感</span>被点着，不是被安抚。
+    它还有<strong>水中昏厥（shallow water blackout）致死风险</strong>。
+    它有它的用途（冷暴露、免疫挑战），但<strong>绝不</strong>用于久坐工作期间——你想要的是稳，它给你的是炸。</p>
+  </div>
+
+  <div class="lab">
+    <div class="lab-title">L7 · 技术定位图：坐标是算出来的，不是贴上去的</div>
+    <canvas id="lab7-canvas" aria-label="呼吸技术二维定位散点图：横轴镇静到唤醒，纵轴工作期认知负荷"></canvas>
+    <div class="controls">
+      <div class="ctrl">
+        <label for="lab7-w">你多在意“不分心”（认知负荷权重）<output id="lab7-wout">1.0×</output></label>
+        <input type="range" id="lab7-w" min="0.4" max="2" step="0.1" value="1">
+      </div>
+    </div>
+    <div class="readout" id="lab7-readout" aria-live="polite"></div>
+    <p class="math-note">坐标不是手贴的，是<strong>从每个技术的属性加权算出来的</strong>：
+    横轴 x（<span style="color:var(--v4)">镇静</span> ↔ <span style="color:var(--v5)">唤醒</span>）由<em>屏息段数</em>与<em>已知唤醒方向</em>加权；
+    纵轴 y（工作期认知负荷）由<em>屏息段数 + 计数负荷</em>加权（要数拍子、要憋气 → 越高 → 越抢注意力）。
+    左下绿色区 = 低负荷 + 镇静 = <strong>适合工作期</strong>。拖动滑块改变你对“不分心”的在意程度，看 y 轴重排。</p>
+  </div>
+
+  <div class="quiz">
+    <div class="q">久坐专注工作期间，<strong>最不该</strong>用下面哪种？</div>
+    <button class="opt" data-correct="0" onclick="quizPick(this,0)">循环叹息（1–3 次做急性 reset）</button>
+    <button class="opt" data-correct="0" onclick="quizPick(this,0)">慢鼻呼吸、呼气略长，向 ~6/min 漂移</button>
+    <button class="opt" data-correct="0" onclick="quizPick(this,0)">膈式慢呼吸</button>
+    <button class="opt" data-correct="1" onclick="quizPick(this,1)">Wim Hof / 循环过度通气</button>
+    <div class="fb">Wim Hof 是<strong>唤醒技术</strong>，方向与你工作期想要的镇静正好相反：它升<span style="color:var(--v5)">肾上腺素</span>、
+    造碱中毒、要长屏息抢注意力，还有水中昏厥风险。其余三种都把你推向共振区、低认知负荷、镇静——正是工作期想要的。</div>
+  </div>
+
+  <div class="callout key">
+    <div class="ct">本节收口</div>
+    <p>循环叹息在 RCT 里赢了——但那是“5 分钟专门练习 + 自报情绪”的<strong>实验室条件</strong>。
+    久坐者的真实战场是<strong>连续 8 小时</strong>：你不可能整天双吸长呼。
+    所以“实验室最佳”<strong>≠</strong>“工作日最佳”。下一节的问题因此变成：
+    <strong>什么呼吸法能在你盯屏、开会、写代码时一直挂在后台运行而不抢注意力？</strong>
+    能撑过一整天的，才算久坐者的最优解。</p>
+  </div>
+</section>
+
+
+<section id="sec-desk">
+  <div class="ch-num">11</div>
+  <h2>久坐者的最优解：一个能撑过整个工作日的方案</h2>
+
+  <p>
+    现在把整条主线收束到你真正要的那个问题上：<strong>含胸盯屏、专注时不自觉屏息的久坐工作者，工作期间到底该怎么呼吸？</strong>
+    前面我们已经把账算清了——<strong style="color:var(--v1)">~6/min 的共振点</strong>能把心率振荡放到最大、
+    <strong style="color:var(--v4)">迷走</strong>张力拉满；可那是<em>实验室</em>里的最优。工作日的约束完全是另一套。
+  </p>
+
+  <p>先把约束列死。任何「工作期最优呼吸法」必须同时满足：</p>
+  <ul>
+    <li><strong>低认知负荷</strong>——你在写代码 / 读论文，呼吸不能占用工作记忆。</li>
+    <li><strong>能边打字边读</strong>——不需要停下手上的事。</li>
+    <li><strong style="color:var(--v1)">无屏息</strong>——任何含 hold 的方法（box 4-4-4-4、4-7-8）都会把注意力拽过去，与「专注工作」直接冲突。</li>
+    <li><strong>隐蔽</strong>——开放工位 / 会议里不能有夸张动作或出声。</li>
+    <li><strong>可持续数小时</strong>——不是 5 分钟的练习，是一整个上午的<em>背景进程</em>。</li>
+  </ul>
+
+  <h3>问题出在哪：三个把你推向交感的力</h3>
+
+  <p>
+    <strong style="color:var(--v5)">Screen apnea（屏幕呼吸暂停）。</strong>
+    Linda Stone 在 2007–2008 年提出这个词：她非正式地观察到「约 80% 的人盯屏 / 收邮件时呼吸变浅或短暂暂停」。
+    诚实地说——<strong>这是个 anecdotal 的钩子，不是统计</strong>：没有对照、未发表，「屏幕场景」的直接测量至今缺失。
+    但它底层的生理链条是可信的：屏息 → CO₂ 滞留 / 浅呼吸 → 轻度<strong style="color:var(--v5)">交感唤醒</strong>。
+    把它当成一个生动的命名，而不是一个被证实的效应量。
+  </p>
+
+  <div class="callout warning">
+    <div class="ct">证据弱 · 当钩子不当数据</div>
+    <p>
+      Screen apnea 的「~80%」没有任何对照研究支撑。我们用它来<em>命名</em>一个你能在自己身上验证的现象
+      （下次 debug 卡住时留意一下你的呼吸），而不是把它当成一个可以引用的事实。
+    </p>
+  </div>
+
+  <p>
+    <strong style="color:var(--v3)">含胸坐姿压低吸气。</strong>
+    这条有实测：Albarrati 等 2018（<em>BioMed Res. Int.</em>，n=35）测到<strong>含胸坐姿的 SNIP（鼻吸气压，吸气肌力的代理）比直坐低 8.7 cmH₂O（p=0.04）</strong>。
+    机制干净——含胸把膈肌顶住、限制其下沉行程，吸气肌使不上力，潮气量随之偏小。幅度温和，但方向确凿。下面把这条<em>算</em>一遍。
+  </p>
+
+  <div class="lab" id="lab8">
+    <div class="lab-title">Lab 8 · 坐姿 → 潮气量 / 吸气压 / 分钟通气</div>
+    <p style="margin:.2rem 0 .6rem;color:var(--ink-soft);font-size:.92rem">
+      拖动姿势滑块（含胸 0 → 直坐 1）。左边看<strong style="color:var(--v2)">膈肌下沉行程</strong>怎么随坐直变大；
+      右边三个数全是公式实算：<strong style="color:var(--v2)">潮气量 Vt = Vt₀·(1+α·posture)</strong>、
+      <strong style="color:var(--v3)">SNIP 吸气压代理</strong>（走完 Albarrati 实测的 8.7 cmH₂O）、
+      <strong style="color:var(--accent-2)">分钟通气 = 6/min × Vt</strong>。幅度刻意取温和，不夸大。
+    </p>
+    <canvas id="lab8-canvas" aria-label="坐姿对呼吸的影响。左侧为躯干与膈肌示意：含胸时胸腔受压、膈肌下沉行程受限（吸得浅），直坐时胸腔打开、膈肌可下沉更深（吸得深）。右侧三条实算读数：潮气量 Vt = Vt0·(1+α·posture)（α=0.12，含胸约 500 mL 到直坐约 560 mL）；SNIP 吸气压代理 = 81.3 + 8.7·posture cmH2O（Albarrati 2018 实测含胸比直坐低 8.7 cmH2O）；分钟通气 = 频率 6/min 乘以潮气量。拖动姿势滑块从含胸 0 到直坐 1，三条读数与膈肌下沉行程随之实时变化。"></canvas>
+    <div class="controls">
+      <div class="ctrl">
+        <label for="lab8-posture">姿势 posture（含胸 0 → 直坐 1）</label>
+        <input id="lab8-posture" type="range" min="0" max="1" step="0.01" value="0.2" aria-label="坐姿，0 为含胸、1 为直坐">
+        <output id="lab8-posture-out">0.20 · 偏含胸</output>
+      </div>
+    </div>
+    <div class="readout" id="lab8-readout" aria-live="polite"></div>
+  </div>
+
+  <p>
+    <strong style="color:var(--v5)">久坐本身的交感偏置。</strong>
+    久坐与<strong style="color:var(--v5)">交感↑</strong> / <strong style="color:var(--v4)">迷走↓</strong> / 压力反射敏感度↓相关——但这些多是<em>横断面</em>观察，
+    强度只到 weak–moderate。别把它当因果铁律，当成一个「默认背景偏置」即可。
+  </p>
+
+  <p>
+    三个力叠起来，画像就清楚了：一个含胸的久坐者，吸气先天被压浅，专注时还时不时屏息，背景又挂着轻度交感偏置——
+    呼吸在工作日里是默默<strong style="color:var(--v5)">向变浅、向唤醒</strong>漂的。最优方案要做的，不是「练一套厉害的呼吸」，而是<strong>把这股漂移抵消掉</strong>。
+  </p>
+
+  <h3>结论：两层方案</h3>
+
+  <p>
+    关键的设计洞见是——<strong>不要用一个方案去同时解决「持续偏置」和「急性尖峰」</strong>，它们的约束相反。
+    持续偏置要的是<em>零成本、能挂一上午</em>；急性尖峰要的是<em>快、强、隐蔽</em>。于是分两层。
+  </p>
+
+  <div class="callout success">
+    <div class="ct">证据扎实的两层最优解（工作期）</div>
+    <p>
+      <strong>背景层（默认，挂整天）：</strong>
+      <strong style="color:var(--v2)">鼻吸</strong>、<strong style="color:var(--v3)">呼气略长于吸气</strong>（大约 4 进 6 出，但<strong>不计数</strong>——靠手感，让它自然慢下来）、
+      让频率<strong style="color:var(--v1)">向 ~6/min 漂</strong>、<strong>坐直让膈肌能下沉</strong>。
+      这一层零认知负荷、可持续，专门抵消「变浅 + 屏息 + 含胸」。
+    </p>
+    <p>
+      <strong>急性层（reset，按需触发）：</strong>
+      紧张会议前、收到一封难邮件后——做 <strong style="color:var(--v3)">1–3 次生理叹息</strong>
+      （双吸：一口长吸 + 顶端再补一小口；接一次缓慢长呼）。约 15–30 秒，桌前隐蔽可做。
+      这是工作期 reset 证据最强的一招（Balban 2023 RCT，n=111：循环叹息正性情绪提升最大，且是唯一显著降静息呼吸频率的臂）。
+    </p>
+  </div>
+
+  <div class="callout key">
+    <div class="ct">为什么这套呼气比例不计数</div>
+    <p>
+      回到 U4 的诚实点：「1:2 呼气更迷走」<strong>未被证实</strong>（Meehan &amp; Shaffer 2024，1:1 vs 1:2 在 6/min 下 HRV 全无显著差异）。
+      真正起作用的是<strong style="color:var(--v1)">把整体频率降到 ~6/min</strong>，不是某个精确的 I:E 比。
+      所以「4 进 6 出」只是一个<em>让你自然慢下来的手感锚</em>——略长的呼气帮你刹住频率，仅此而已，不必掐秒表。
+      一旦你开始数拍子，认知负荷就上来了，方案就违背了它自己的第一约束。
+    </p>
+  </div>
+
+  <h3>worked example：一个上午怎么用</h3>
+
+  <p>napkin 脚本，不是处方，是让你看清「背景层挂着、急性层点状触发」长什么样：</p>
+
+  <div class="callout insight">
+    <div class="ct">9:00–12:00 的一段</div>
+    <p>
+      <strong>9:00</strong> 坐下，<strong style="color:var(--v2)">坐直</strong>——这一下就把 L8 里那 8.7 cmH₂O 的 SNIP 损失拿回来、膈肌松开下沉空间。
+      之后<strong>不去管</strong>呼吸：只保持鼻吸、呼气松松地比吸气长一点，让它自己往慢里漂。这是背景层，挂着就行。<br>
+      <strong>9:40</strong> 一段 bug 卡住，发现自己又屏住了气（screen apnea 现形）——不慌，只是<em>恢复</em>背景层：鼻吸、长呼，两三口就回来。<br>
+      <strong>10:30</strong> 收到一封难邮件，胸口一紧——触发<strong style="color:var(--v3)">急性层</strong>：2 次生理叹息，~20 秒，桌前没人看得出来；
+      回到背景层继续写。<br>
+      <strong>11:55</strong> 起身去开一个紧张的会前，门口站定做 1 次生理叹息当 reset，然后进去。
+    </p>
+  </div>
+
+  <div class="callout warning">
+    <div class="ct">诚实：「最优」不是实验室效应最大</div>
+    <p>
+      box / 4-7-8 在某些急性指标上数字也不难看，Wim Hof 的生理效应甚至很猛。但它们在<strong>工作期</strong>全部出局——
+      因为它们<strong style="color:var(--v5)">抢注意力 / 升唤醒</strong>：含屏息要计数（占工作记忆），过度通气法把你推向交感（与专注相反）。
+      这里的「最优」标准不是「实验室里效应量最大」，而是<strong>能在真实工作日里实际撑下来、且不损害你正在做的事</strong>。
+      一个零成本、能挂三小时的「弱」方案，胜过一个强但你十分钟后就忘了做的方案。
+    </p>
+  </div>
+</section>
+
+<section id="sec-connections">
+  <div class="ch-num">12</div>
+  <h2>边界与争议：那些被品牌叙事盖住的反方</h2>
+
+  <p>
+    这份报告的脊梁是<strong>把数据和品牌分开</strong>。前面给的是「该信什么」，这一节专门给「别信什么 / 别过度信什么」——
+    每条都挂上诚实的可靠度分级。
+  </p>
+
+  <div class="callout danger">
+    <div class="ct">坑 · box / 4-7-8 是品牌不是数据</div>
+    <p>
+      <strong>Box breathing 4-4-4-4</strong> 靠 Navy SEAL / Mark Divine 的声誉传播；
+      在斯坦福那项头对头 RCT（Balban 2023）里它<strong>输给了循环叹息</strong>。<strong>4-7-8</strong>（Andrew Weil）只有小样本急性数据，
+      而且对照显示普通 ~6/min 慢呼吸把 HRV 抬得更多——「4:7:8」这组数字并不特殊。两者都是 mostly anecdotal 的<em>具体配方</em>，
+      起作用的是「慢下来」，不是那串神奇数字。工作期还额外有屏息抢注意力的硬伤。
+    </p>
+  </div>
+
+  <div class="callout danger">
+    <div class="ct">危险 · Wim Hof 是唤醒技术，绝不用于工作期</div>
+    <p>
+      循环过度通气（~30 次快深呼吸 + 屏息）会造成急性呼吸性碱中毒（pH 可达 ~7.75）、肾上腺素约翻倍、抗炎反应
+      （Kox 2014，PNAS，RCT n=24）。生理效应是真的——但它是<strong style="color:var(--v5)">应激 / 唤醒</strong>技术，
+      与「镇静」<strong>方向相反</strong>，而且<strong>有水中 / 驾驶时昏厥致死的风险</strong>。
+      它<strong>绝不</strong>作久坐工作期间的呼吸法。把它和「慢呼吸」放进同一个购物清单，是最常见也最危险的混淆。
+    </p>
+  </div>
+
+  <div class="callout warning">
+    <div class="ct">证据弱 · I:E 比迷思</div>
+    <p>
+      「延长呼气更迷走（1:2 优于 1:1）」是个广为流传但<strong>未被证实</strong>的假设。RSA 闸门（吸气抑制迷走、呼气恢复迷走）本身是 solid 的，
+      但「呼气比例越大越好」不是——Meehan &amp; Shaffer 2024（两次 within-subject RCT，合计 n=42，在 6/min 下比较 1:1 vs 1:2）
+      <strong>所有 HRV 指标无显著差异</strong>（如 RMSSD 65.2 vs 69.8，p=.26）。把 RSA 闸门当事实，把「呼气比优势」当合理但未证实的假设。
+      <strong>到 ~6/min 本身，比 I:E 比重要得多。</strong>
+    </p>
+  </div>
+
+  <div class="callout warning">
+    <div class="ct">证据弱且有厂商偏倚 · 别把降压当卖点</div>
+    <p>
+      「慢呼吸降血压」的证据弱且被赞助偏倚污染。Mahtani 2012：<strong>排除 RESPeRATE（厂商赞助）试验后，降压效应消失</strong>；
+      2022 年一项约 17,214 人的荟萃<strong>未见显著降压</strong>。所以——慢呼吸对 HRV / 放松的即时效应可以谈，
+      但<strong>别把「降血压」当成卖点</strong>，那一块是 weak / conflicted。这正是「品牌叙事盖过数据」的典型样本。
+    </p>
+  </div>
+
+  <div class="callout warning">
+    <div class="ct">证据弱 · 手环 / gadget 的 HRV 反馈有局限</div>
+    <p>
+      光体积描记（PPG）手环估的 HRV 在<strong>静息</strong>时尚可，一旦有动作伪影、低灌注或心律不齐就显著失真；
+      不同设备的绝对值不可比，趋势比绝对数可信。更重要的是——共振点训练<strong>不需要</strong>实时 gadget：你要找的频率有解析解
+      （≈ 1/(2τ)，对多数人落在 5.5–6/min），凭略长的呼气把自己带到那个区间即可。别让一块手环变成新的认知负荷源。
+    </p>
+  </div>
+
+  <div class="callout key">
+    <div class="ct">分级总览（诚实标尺）</div>
+    <p>
+      <strong style="color:var(--v3)">扎实</strong>：~6/min 的压力反射共振机制、RSA 闸门、鼻呼吸的 NO 生理、生理叹息（单 RCT）、坐姿对吸气的影响。<br>
+      <strong style="color:var(--v5)">弱 / 有偏倚</strong>：I:E 比优势、慢呼吸降压、久坐自主神经的因果、gadget HRV、screen apnea 的「屏幕场景」直接测量。<br>
+      <strong style="color:var(--v1)">坑 / 危险</strong>：box / 4-7-8 的神奇数字叙事、Wim Hof 用于镇静或工作期。
+    </p>
+  </div>
+</section>
+
+<section id="sec-quiz">
+  <div class="ch-num">13</div>
+  <h2>综合自测</h2>
+
+  <p>三道题，把整条主线（共振、迷思、CO₂、工作期约束、两层方案）串起来。每题先答，再看解释。</p>
+
+  <div class="quiz">
+    <div class="q">1. 你的压力反射 HR 环路延迟 τ ≈ 5 s。为什么共振频率落在 ~6/min？</div>
+    <button class="opt" data-correct="0" onclick="quizPick(this)">因为 6/min 是人类静息呼吸频率，身体天生偏好它</button>
+    <button class="opt" data-correct="1" onclick="quizPick(this)">共振发生在「延迟 = 半周期」处，f ≈ 1/(2τ) = 1/(2·5) = 0.1 Hz ≈ 6/min——反馈刚好同相叠加</button>
+    <button class="opt" data-correct="0" onclick="quizPick(this)">因为 6/min 的呼气最长，迷走恢复最充分</button>
+    <button class="opt" data-correct="0" onclick="quizPick(this)">因为手环厂商把目标频率设成了 6/min</button>
+    <div class="fb">共振是延迟负反馈环路的性质：当呼吸周期 = 2τ 时，压力反射的修正<em>正好</em>赶上下一个振荡相位、同相叠加，HR 振荡被放到最大。τ=5 s → 周期 10 s → 6/min。这是<strong>物理</strong>不是偏好；τ 因人略异（4.5–6.5/min）。注意——「6/min 呼气最长」是错的诱因：起作用的是频率落在 1/(2τ)，不是 I:E 比。</div>
+  </div>
+
+  <div class="quiz">
+    <div class="q">2. 一个人想「慢呼吸养生」，于是把频率降到 6/min 但保持原来的浅呼吸（每口 ~400 mL）。结果反而头晕。最可能的原因？</div>
+    <button class="opt" data-correct="0" onclick="quizPick(this)">慢呼吸导致过度通气，PaCO₂ 被吹低、呼吸性碱中毒</button>
+    <button class="opt" data-correct="1" onclick="quizPick(this)">分钟通气 = 频率 × 潮气量；只降频率不增潮气量 → 肺泡通气↓ → 低通气、CO₂ 偏高 / 供气不足</button>
+    <button class="opt" data-correct="0" onclick="quizPick(this)">6/min 太接近共振，HRV 过大引起头晕</button>
+    <button class="opt" data-correct="0" onclick="quizPick(this)">鼻呼吸 NO 太多，扩血管导致低血压</button>
+    <div class="fb">关键是<strong>分钟通气 = 频率 × 潮气量</strong>。把频率从 12 砍到 6 却不把每口加深，分钟通气直接腰斩、肺泡通气不足——这是「做错的慢呼吸」。正确慢呼吸是<strong>降频率 + 增潮气量</strong>（如 6×900），故它<em>不是</em>过度通气。诱因里「碱中毒」方向反了：碱中毒来自吹<em>太多</em>气（Wim Hof 式），不是吹太少。</div>
+  </div>
+
+  <div class="quiz">
+    <div class="q">3. 关于「久坐工作期间的最优呼吸法」，下面哪个说法对？</div>
+    <button class="opt" data-correct="0" onclick="quizPick(this)">用 box breathing 4-4-4-4，因为 Navy SEAL 在用，证据最硬</button>
+    <button class="opt" data-correct="0" onclick="quizPick(this)">每天做一轮 Wim Hof 循环过度通气，给自己充能、对抗久坐疲劳</button>
+    <button class="opt" data-correct="1" onclick="quizPick(this)">两层：背景层挂整天（鼻吸、呼气略长、不计数地向 6/min 漂、坐直让膈肌下沉），急性层按需做 1–3 次生理叹息 reset</button>
+    <button class="opt" data-correct="0" onclick="quizPick(this)">戴 HRV 手环实时盯着读数，把频率精确锁定在 5.5/min</button>
+    <div class="fb">工作期约束是低认知负荷、无屏息、隐蔽、可持续数小时。box 含屏息要计数（抢注意力，且证据是声誉非数据）；Wim Hof 是<strong>唤醒</strong>技术、方向相反且有昏厥风险，绝不用于工作期；手环把呼吸变成新的认知负荷且 PPG 有局限。最优解是<strong>两层</strong>——零成本的背景层抵消持续偏置，按需触发的生理叹息处理急性尖峰。它不追求实验室里效应最大，而追求能撑过真实工作日。</div>
+  </div>
+</section>
+
+<section id="sec-close">
+  <div class="ch-num">14</div>
+  <h2>收尾：一张对照表，和一张久坐协议卡</h2>
+
+  <p>
+    把整篇压成一张表。每一行的重点不是「谁最强」，而是<strong>净效应往哪个方向（镇静↔唤醒）、最好的证据是什么、可靠度几级、能不能在工作期用</strong>。
+  </p>
+
+  <table class="cmp">
+    <thead>
+      <tr>
+        <th>技术</th>
+        <th>净效应（镇静↔唤醒）</th>
+        <th>最佳证据 + 引文</th>
+        <th>可靠度</th>
+        <th>工作期可用？</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong style="color:var(--v3)">循环 / 生理叹息</strong></td>
+        <td>镇静（最快的急性 reset）</td>
+        <td>RCT n=111，正性情绪提升最大、唯一显著降静息呼吸频率（Balban 2023, Cell Rep. Med.）</td>
+        <td><strong style="color:var(--v3)">扎实</strong>（单 RCT、健康人、自报）</td>
+        <td><strong style="color:var(--v3)">是 · 急性层首选</strong>（15–30 s，隐蔽）</td>
+      </tr>
+      <tr>
+        <td><strong style="color:var(--v4)">膈式 / 腹式慢呼吸</strong></td>
+        <td>镇静</td>
+        <td>RCT n=40，皮质醇↓、负性情绪↓、持续注意力↑（Ma 2017, Front. Psychol.）</td>
+        <td><strong style="color:var(--v3)">较扎实</strong>（小 RCT，有客观生物标志）</td>
+        <td>部分（坐直 + 深一点的鼻吸，可融入背景层）</td>
+      </tr>
+      <tr>
+        <td><strong style="color:var(--v1)">coherent ~6/min（共振）</strong></td>
+        <td>镇静（HRV / RSA 最大化）</td>
+        <td>共振 = 1/(2τ) 机制；BRS 9.5→11.5（Bernardi 2001, BMJ）；综述 Lehrer 2014 / Zaccaro 2018</td>
+        <td><strong style="color:var(--v3)">机制扎实</strong>（方向稳，合并效应量有限）</td>
+        <td><strong style="color:var(--v3)">是 · 背景层的目标频率</strong>（不计数地漂过去）</td>
+      </tr>
+      <tr>
+        <td><strong style="color:var(--v2)">鼻呼吸</strong></td>
+        <td>中性偏镇静（低流速吸入更多 NO）</td>
+        <td>鼻窦持续产 NO、改善通气/灌注，鼻吸约 +10% 动脉氧合（Lundberg 系列）</td>
+        <td><strong style="color:var(--v3)">生理扎实</strong>（健康宣称被《Breath》夸大）</td>
+        <td><strong style="color:var(--v3)">是 · 背景层默认</strong>（无成本）</td>
+      </tr>
+      <tr>
+        <td><strong style="color:var(--v5)">box 4-4-4-4</strong></td>
+        <td>镇静（含屏息）</td>
+        <td>声誉传播；在头对头 RCT 中输给循环叹息（Balban 2023）</td>
+        <td><strong style="color:var(--v5)">弱</strong>（mostly anecdotal）</td>
+        <td><strong style="color:var(--v1)">否</strong>（屏息要计数，抢注意力）</td>
+      </tr>
+      <tr>
+        <td><strong style="color:var(--v5)">4-7-8</strong></td>
+        <td>镇静（含屏息）</td>
+        <td>小样本急性 ↓HR/↑HF-HRV；普通 6/min 抬 HRV 更多</td>
+        <td><strong style="color:var(--v5)">低质量</strong>（数字不特殊）</td>
+        <td><strong style="color:var(--v1)">否</strong>（计数 + 长屏息）</td>
+      </tr>
+      <tr>
+        <td><strong style="color:var(--v5)">Wim Hof / 循环过度通气</strong></td>
+        <td><strong style="color:var(--v5)">唤醒</strong>（与镇静相反）</td>
+        <td>急性碱中毒、肾上腺素 ~2×、抗炎（Kox 2014, PNAS, RCT n=24）</td>
+        <td>效应扎实，但<strong style="color:var(--v1)">用途错配</strong></td>
+        <td><strong style="color:var(--v1)">绝不</strong>（唤醒 + 昏厥风险）</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h3>久坐协议卡</h3>
+
+  <p>把上表收成一张能贴在显示器边上的卡。三块，每条一句。</p>
+
+  <table class="cmp">
+    <thead><tr><th>层</th><th>怎么做（一句话）</th></tr></thead>
+    <tbody>
+      <tr><td><strong style="color:var(--v3)">背景层 · 挂整天</strong></td><td><strong style="color:var(--v2)">鼻吸</strong>，呼气松松地比吸气长一点（约 4 进 6 出，<strong>不计数</strong>），让频率自然往 ~6/min 漂——零成本，专治变浅。</td></tr>
+      <tr><td><strong style="color:var(--v3)">急性层 · 按需触发</strong></td><td>紧张会议前 / 收到难邮件后，做 <strong>1–3 次生理叹息</strong>（双吸 + 长呼，~15–30 s，桌前隐蔽）——最快的 reset。</td></tr>
+      <tr><td><strong style="color:var(--v2)">坐姿 · 一次到位</strong></td><td><strong>坐直、胸腔打开</strong>，让膈肌有下沉空间——把含胸损失的那 ~8.7 cmH₂O 吸气压拿回来。</td></tr>
+    </tbody>
+  </table>
+
+  <div class="callout success">
+    <div class="ct">回扣 · 收束整条主线</div>
+    <p>
+      把呼吸调到那个让心率振荡最大、迷走张力最满的<strong style="color:var(--v1)">共振点</strong>，
+      不需要 app、不需要屏息、不需要数拍子。需要的只有三样：一只<strong style="color:var(--v2)">鼻子</strong>、
+      一段<strong style="color:var(--v3)">略长的呼气</strong>、和把背<strong style="color:var(--v2)">坐直</strong>。
+      多数呼吸法靠品牌叙事，少数靠数据——而能撑过你整个工作日的那个，恰恰是最朴素、最不需要装备的那个。
+    </p>
+  </div>
+</section>
+
+
+</main>
+
+<footer>循证拆解 · 引文内联于正文（Balban 2023 Cell Rep Med · Bernardi 2001 BMJ · Zaccaro 2018 Front Hum Neurosci · Russo 2017 Breathe · Meehan &amp; Shaffer 2024 · Ma 2017 Front Psychol · Kox 2014 PNAS · Lehrer &amp; Gevirtz 2014 · Vaschillo 2002 · Albarrati 2018）。教育性整理，非医疗建议。</footer>
+
+<script>
+"use strict";
+/* === JS palette: MUST mirror the CSS :root variable colors (color-as-type law) === */
+const C = {
+  ink:'#16181d', inkSoft:'#3a3f4b', inkFaint:'#6b7280', rule:'#cdd2dc',
+  accent:'#3b5bdb', accent2:'#0c8599',
+  v1:'#e03131', v2:'#3b5bdb', v3:'#2f9e44', v4:'#7048e8', v5:'#e8a000'
+};
+
+/* === DPR-correct canvas setup: call once per lab, draw in CSS pixels === */
+function setupCanvas(canvas, cssW, cssH) {
+  const dpr = Math.max(1, window.devicePixelRatio || 1);
+  canvas.style.width = cssW + 'px'; canvas.style.height = cssH + 'px';
+  canvas.width = Math.round(cssW * dpr); canvas.height = Math.round(cssH * dpr);
+  const ctx = canvas.getContext('2d'); ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  return ctx;
+}
+function drawArrow(ctx, x1, y1, x2, y2, color, w) {
+  ctx.strokeStyle = color; ctx.fillStyle = color; ctx.lineWidth = w || 2;
+  ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke();
+  const a = Math.atan2(y2 - y1, x2 - x1), h = 8;
+  ctx.beginPath(); ctx.moveTo(x2, y2);
+  ctx.lineTo(x2 - h * Math.cos(a - .4), y2 - h * Math.sin(a - .4));
+  ctx.lineTo(x2 - h * Math.cos(a + .4), y2 - h * Math.sin(a + .4));
+  ctx.closePath(); ctx.fill();
+}
+
+/* === reading-UX furniture: progress bar + scroll-spy === */
+(function () {
+  const bar = document.getElementById('progress');
+  const secs = [...document.querySelectorAll('main section[id]')];
+  const spy = document.getElementById('spy');
+  secs.forEach(s => {
+    const a = document.createElement('a'); a.href = '#' + s.id;
+    const t = (s.querySelector('h2') || {}).textContent || s.id;
+    a.innerHTML = '<span>' + t + '</span>'; spy.appendChild(a);
+  });
+  const links = [...spy.children];
+  function onScroll() {
+    const h = document.documentElement;
+    bar.style.width = (h.scrollTop / (h.scrollHeight - h.clientHeight) * 100) + '%';
+    let cur = 0; secs.forEach((s, i) => { if (s.getBoundingClientRect().top < window.innerHeight * 0.4) cur = i; });
+    links.forEach((l, i) => l.classList.toggle('active', i === cur));
+  }
+  document.addEventListener('scroll', onScroll, { passive: true }); onScroll();
+})();
+
+/* === quiz checking === */
+function quizPick(btn, correct) {
+  const box = btn.closest('.quiz'); if (box.dataset.done) return;
+  box.dataset.done = '1';
+  box.querySelectorAll('.opt').forEach(o => o.classList.add(o.dataset.correct === '1' ? 'correct' : (o === btn ? 'wrong' : '')));
+  const fb = box.querySelector('.fb'); if (fb) { fb.style.display = 'block'; if (window.renderMathInElement) renderMathInElement(fb); }
+}
+
+/* === KaTeX render (deferred, on DOMContentLoaded). Inside math use \lt \gt \le \ge —
+       a raw < or > is HTML-parsed as a tag before KaTeX runs and corrupts the formula. === */
+document.addEventListener('DOMContentLoaded', function () {
+  if (window.renderMathInElement) renderMathInElement(document.body, {
+    delimiters: [{ left: '$$', right: '$$', display: true }, { left: '$', right: '$', display: false }],
+    throwOnError: false, ignoredTags: ['pre', 'code', 'script', 'style']
+  });
+  // math-render integrity: a leftover "$$" after render means a display block never matched —
+  // almost always a raw < or > inside it that the HTML parser ate as a tag before KaTeX saw it.
+  // Flag the offending block (dashed red) so QA catches it; fix the source with \lt \gt \le \ge.
+  if (document.body.textContent.indexOf('$$') !== -1) {
+    console.warn('[distill] leftover "$$" after render — raw < or > inside a formula? use \\lt \\gt \\le \\ge');
+    document.querySelectorAll('.math-block, .callout, p, li, td').forEach(function (el) {
+      if (el.textContent.indexOf('$$') !== -1) el.style.outline = '2px dashed var(--danger)';
+    });
+  }
+  // quiz integrity: each .quiz must have exactly one data-correct="1" — flags the inverted/blank-flag bug during QA
+  document.querySelectorAll('.quiz').forEach(function (q, i) {
+    var n = q.querySelectorAll('.opt[data-correct="1"]').length;
+    if (n !== 1) { console.warn('[distill] quiz #' + i + ' has ' + n + ' correct option(s), expected 1'); q.style.outline = '2px dashed var(--danger)'; }
+  });
+});
+
+/* === LABS: each lab is an IIFE ending in draw(), with lab-prefixed ids. Example pattern:
+(function () {
+  const c = document.getElementById('lab1-canvas'); if (!c) return;
+  const ctx = setupCanvas(c, 760, 320);
+  const s = document.getElementById('lab1-sigma');
+  function draw() {
+    ctx.clearRect(0, 0, 760, 320);
+    const sigma = +s.value;            // read control
+    // ... REAL computation here (no lerp-to-prerendered, no hard-coded result) ...
+  }
+  s.addEventListener('input', draw); draw();   // render on init
+})();
+=== */
+</script>
+<script>
+/* ============================================================================
+ * L1 · 呼吸 → 心率 实时预览  (sec-map)
+ * A breathing pacer (sinusoid at chosen rate) drives an RSA heart-rate trace.
+ *   breathing phase  b(t) = sin(2π t / T),  T = 60 / rate   (rate in breaths/min)
+ *   heart rate       HR(t) = HR0 − A·b(t)
+ * b>0 区段 = 吸气(蓝, HR 偏高), b<0 区段 = 呼气(绿, HR 偏低). 心率红线.
+ * Real per-frame computation; both traces scroll left. Gated on a running flag
+ * + rAF + a 开始/暂停 button. Honors prefers-reduced-motion (renders one static
+ * frame, no animation loop).
+ * ========================================================================== */
+(function () {
+  const c = document.getElementById('lab1-canvas'); if (!c) return;
+  const W = 860, H = 300;
+  const ctx = setupCanvas(c, W, H);
+
+  const rate   = document.getElementById('lab1-rate');
+  const rateO  = document.getElementById('lab1-rate-out');
+  const toggle = document.getElementById('lab1-toggle');
+  const readout= document.getElementById('lab1-readout');
+
+  // ---- physiological constants (illustrative; HR0/A are nominal, not measured) ----
+  const HR0 = 68;           // bpm, resting mean
+  const A   = 9;            // bpm, RSA half-amplitude (峰谷 ≈ 2A = 18 bpm at this fixed gain)
+  const WIN = 30;           // seconds shown across the canvas width
+  const reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  // ---- layout ----
+  const padL = 52, padR = 14, padT = 10, padB = 24;
+  const plotW = W - padL - padR;
+  const breatheTop = padT, breatheH = 70;            // upper strip: breathing bar
+  const hrTop = breatheTop + breatheH + 28, hrH = H - hrTop - padB;  // lower: HR trace
+  const HRlo = HR0 - A - 5, HRhi = HR0 + A + 5;       // y-axis range for HR
+
+  let running = !reduce;     // start running unless reduced-motion
+  let t0 = performance.now() / 1000;   // sim clock origin
+  let simT = 0;              // elapsed sim seconds (frozen value while paused)
+  let lastWall = t0;
+
+  function T() { return 60 / (+rate.value); }         // breath period (s)
+  function breath(tt) { return Math.sin(2 * Math.PI * tt / T()); }
+  function hr(tt) { return HR0 - A * breath(tt); }
+
+  function xOf(tt, now) {            // map sim-time tt (within [now-WIN, now]) to x px
+    return padL + ((tt - (now - WIN)) / WIN) * plotW;
+  }
+  function yOfHR(v) {
+    return hrTop + (1 - (v - HRlo) / (HRhi - HRlo)) * hrH;
+  }
+
+  function drawAxes() {
+    ctx.clearRect(0, 0, W, H);
+    // panel backgrounds
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(padL, hrTop, plotW, hrH);
+    // HR gridlines + labels (60/68/76 ...)
+    ctx.font = '12px ui-monospace, monospace';
+    ctx.textAlign = 'right'; ctx.textBaseline = 'middle';
+    for (let v = 60; v <= 76; v += 8) {
+      const y = yOfHR(v);
+      ctx.strokeStyle = C.rule; ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.moveTo(padL, y); ctx.lineTo(W - padR, y); ctx.stroke();
+      ctx.fillStyle = C.inkFaint;
+      ctx.fillText(v.toFixed(0), padL - 8, y);
+    }
+    // baseline HR0
+    ctx.strokeStyle = C.inkFaint; ctx.setLineDash([3, 4]);
+    const yb = yOfHR(HR0);
+    ctx.beginPath(); ctx.moveTo(padL, yb); ctx.lineTo(W - padR, yb); ctx.stroke();
+    ctx.setLineDash([]);
+    // axis labels
+    ctx.textAlign = 'left'; ctx.fillStyle = C.inkFaint; ctx.font = '12px ui-monospace, monospace';
+    ctx.fillText('心率 (bpm)', padL + 2, hrTop + 10);
+    ctx.fillText('呼吸', padL + 2, breatheTop + 12);
+  }
+
+  function drawBreathing(now) {
+    // sample the breathing waveform across the window; color each segment by phase
+    ctx.lineWidth = 1;
+    const N = 240;
+    for (let i = 0; i < N; i++) {
+      const tt = (now - WIN) + (i / N) * WIN;
+      const b = breath(tt);                      // -1..1
+      const x = padL + (i / N) * plotW;
+      const w = plotW / N + 0.6;
+      // bar height proportional to |b|; up=inhale(blue), down=exhale(green)
+      const mid = breatheTop + breatheH / 2;
+      const h = (b * (breatheH / 2 - 2));
+      ctx.fillStyle = b >= 0 ? C.v2 : C.v3;      // 吸气蓝 / 呼气绿
+      ctx.globalAlpha = 0.85;
+      if (b >= 0) ctx.fillRect(x, mid - h, w, h);
+      else ctx.fillRect(x, mid, w, -h);
+      ctx.globalAlpha = 1;
+    }
+    // midline
+    ctx.strokeStyle = C.rule2 || C.rule; ctx.lineWidth = 1;
+    const mid = breatheTop + breatheH / 2;
+    ctx.beginPath(); ctx.moveTo(padL, mid); ctx.lineTo(W - padR, mid); ctx.stroke();
+    // current-phase tag at the right edge
+    const bNow = breath(now);
+    ctx.font = '13px -apple-system, system-ui, sans-serif';
+    ctx.textAlign = 'right'; ctx.textBaseline = 'top';
+    ctx.fillStyle = bNow >= 0 ? C.v2 : C.v3;
+    ctx.fillText(bNow >= 0 ? '吸气 ↑' : '呼气 ↓', W - padR - 2, breatheTop);
+  }
+
+  function drawHR(now) {
+    ctx.strokeStyle = C.v1; ctx.lineWidth = 2.2;   // 心率红
+    ctx.beginPath();
+    const N = 300;
+    for (let i = 0; i <= N; i++) {
+      const tt = (now - WIN) + (i / N) * WIN;
+      const x = padL + (i / N) * plotW;
+      const y = yOfHR(hr(tt));
+      if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+    }
+    ctx.stroke();
+    // moving dot at "now" (right edge)
+    const yn = yOfHR(hr(now));
+    ctx.fillStyle = C.v1;
+    ctx.beginPath(); ctx.arc(W - padR, yn, 4, 0, 2 * Math.PI); ctx.fill();
+  }
+
+  function updateReadout() {
+    const hi = HR0 + A, lo = HR0 - A;      // peak (吸气) / trough (呼气)
+    rateO.textContent = (+rate.value).toFixed(1);
+    readout.textContent =
+      '即时心率范围：' + lo.toFixed(0) + '–' + hi.toFixed(0) +
+      ' bpm（峰-谷 ≈ ' + (2 * A).toFixed(0) + ' bpm）｜呼吸周期 ' + T().toFixed(1) + ' s';
+  }
+
+  function render() {
+    const now = simT;
+    drawAxes();
+    drawBreathing(now);
+    drawHR(now);
+    updateReadout();
+  }
+
+  function frame() {
+    if (!running) return;
+    const wall = performance.now() / 1000;
+    simT += (wall - lastWall);
+    lastWall = wall;
+    render();
+    requestAnimationFrame(frame);
+  }
+
+  function start() {
+    if (running) return;
+    running = true;
+    lastWall = performance.now() / 1000;
+    toggle.textContent = '暂停';
+    requestAnimationFrame(frame);
+  }
+  function pause() {
+    running = false;
+    toggle.textContent = '开始';
+    render();
+  }
+
+  toggle.addEventListener('click', function () { running ? pause() : start(); });
+  rate.addEventListener('input', function () { render(); });  // live re-render even while paused
+
+  // init
+  if (reduce) {
+    // reduced-motion: render a single representative static frame, label button as start
+    simT = WIN;            // show a filled window
+    running = false; toggle.textContent = '开始';
+    render();
+  } else {
+    toggle.textContent = '暂停';
+    render();
+    requestAnimationFrame(frame);
+  }
+})();
+
+</script>
+<script>
+/* ============================================================================
+ * L2 · u2 — RSA 闸门探索器
+ * Compute instantaneous HR(t) from the breathing waveform using the SAME toy
+ * model printed beside it (RSA-1):
+ *     HR(t)  = HR0 - A(f,d) * sin(2π f t / 60)
+ *     A(f,d) = Amax * d * T^n / (T^n + Th^n),   T = 60/f
+ * RSA half-amplitude grows as the breath slows (each phase dwells longer) and
+ * with tidal depth, saturating via the Hill term T^n/(T^n+Th^n) — exactly the
+ * prose: 15/min → ~6 bpm peak-to-trough, 6/min → ~17 bpm, then it flattens.
+ * The peak-to-trough readout is 2*A computed from this formula (nothing hard-
+ * coded). Breathing phase shaded: inhale = blue (C.v2), exhale = green (C.v3);
+ * HR trace = red (C.v1). 30 s static window, no animation needed.
+ * ========================================================================== */
+(function () {
+  const c = document.getElementById('lab2-canvas'); if (!c) return;
+  const W = 900, H = 360, ctx = setupCanvas(c, W, H);
+
+  const rate    = document.getElementById('lab2-rate');
+  const rateOut = document.getElementById('lab2-rate-out');
+  const depth   = document.getElementById('lab2-depth');
+  const depthOut= document.getElementById('lab2-depth-out');
+  const readout = document.getElementById('lab2-readout');
+
+  // ---- model constants ----
+  const HR0  = 75;       // baseline HR (bpm)
+  const AMAX = 13;       // max half-amplitude (bpm) at full depth, fully saturated
+  const THALF = 7.0;     // half-saturation period (s): RSA reaches AMAX/2 here
+  const NHILL = 2;       // Hill exponent: how sharp the saturation knee is
+  const WIN  = 30;       // window length (s)
+
+  // half-amplitude A(f,d) — the ONE formula, reused for curve and readout.
+  // Hill saturation in the breath PERIOD T: short T (fast breath) → small,
+  // long T (slow breath) → saturates toward AMAX*d.
+  function ampHalf(f, d) {
+    const T = 60 / f;
+    const Tn = Math.pow(T, NHILL);
+    return AMAX * d * Tn / (Tn + Math.pow(THALF, NHILL));
+  }
+  // instantaneous HR at time t (s). Inhale = sin rising → -sin makes HR climb.
+  function hrAt(t, f, d) {
+    return HR0 - ampHalf(f, d) * Math.sin(2 * Math.PI * f * t / 60);
+  }
+
+  // plot geometry
+  const padL = 56, padR = 18, padT = 22, padB = 44;
+  const plotW = W - padL - padR, plotH = H - padT - padB;
+  const HR_LO = HR0 - AMAX - 3, HR_HI = HR0 + AMAX + 3;   // fixed y-range
+  const x = t => padL + (t / WIN) * plotW;
+  const y = hr => padT + (1 - (hr - HR_LO) / (HR_HI - HR_LO)) * plotH;
+
+  function draw() {
+    const f = +rate.value, d = +depth.value;
+    rateOut.textContent  = f.toFixed(1);
+    depthOut.textContent = d.toFixed(2);
+
+    ctx.clearRect(0, 0, W, H);
+
+    // ---- breathing-phase shading: inhale (first half of each period) blue,
+    //      exhale (second half) green. Phase from the SAME sin used for HR:
+    //      sin(2π f t/60) > 0 on its rising-then-falling... use phase directly.
+    //      Inhale = rising HR = -sin increasing = sin's downslope... simplest:
+    //      define phase p in [0,1) over period T; p<0.5 inhale, p>=0.5 exhale,
+    //      and align so HR climbs during inhale (peaks at end of inhale). ----
+    const T = 60 / f;
+    // step across window in small x-increments, fill phase bands
+    const dt = 0.05;
+    for (let t = 0; t < WIN; t += dt) {
+      const p = (t % T) / T;                 // 0..1 within current breath
+      const inhale = p < 0.5;
+      ctx.fillStyle = inhale
+        ? 'rgba(59,91,219,0.10)'             // C.v2 blue
+        : 'rgba(47,158,68,0.10)';            // C.v3 green
+      ctx.fillRect(x(t), padT, Math.max(1, x(t + dt) - x(t)) + 0.6, plotH);
+    }
+
+    // ---- axes / frame ----
+    ctx.strokeStyle = C.rule; ctx.lineWidth = 1;
+    ctx.strokeRect(padL, padT, plotW, plotH);
+
+    // baseline HR0 dashed reference
+    ctx.save();
+    ctx.setLineDash([4, 4]); ctx.strokeStyle = C.inkFaint; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(padL, y(HR0)); ctx.lineTo(padL + plotW, y(HR0)); ctx.stroke();
+    ctx.restore();
+
+    // y ticks
+    ctx.fillStyle = C.inkFaint; ctx.font = '12px ui-monospace, monospace';
+    ctx.textAlign = 'right'; ctx.textBaseline = 'middle';
+    [HR_LO + 2, HR0, HR_HI - 2].forEach(v => {
+      ctx.fillText(Math.round(v), padL - 8, y(v));
+      ctx.strokeStyle = C.rule; ctx.beginPath();
+      ctx.moveTo(padL - 4, y(v)); ctx.lineTo(padL, y(v)); ctx.stroke();
+    });
+    // x ticks (seconds)
+    ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+    for (let s = 0; s <= WIN; s += 5) {
+      ctx.fillText(s + 's', x(s), padT + plotH + 8);
+    }
+
+    // ---- HR(t) trace (red) ----
+    ctx.strokeStyle = C.v1; ctx.lineWidth = 2.4; ctx.beginPath();
+    let first = true;
+    for (let t = 0; t <= WIN; t += 0.05) {
+      const hr = hrAt(t, f, d);
+      const px = x(t), py = y(hr);
+      if (first) { ctx.moveTo(px, py); first = false; } else ctx.lineTo(px, py);
+    }
+    ctx.stroke();
+
+    // ---- mark peak & trough of the FIRST full breath, annotate excursion ----
+    const A = ampHalf(f, d);
+    const pk = HR0 + A, tr = HR0 - A;        // peak / trough HR
+    // peak occurs where -sin = +1 → sin = -1 → 2πf t/60 = 3π/2 → t = (3/4)T
+    const tPk = 0.75 * T, tTr = 0.25 * T;
+    if (tPk <= WIN) {
+      ctx.fillStyle = C.v1;
+      ctx.beginPath(); ctx.arc(x(tPk), y(pk), 3.5, 0, 7); ctx.fill();
+      ctx.beginPath(); ctx.arc(x(tTr), y(tr), 3.5, 0, 7); ctx.fill();
+    }
+
+    // legend
+    ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+    ctx.font = '12px ui-monospace, monospace';
+    let lx = padL + 8, ly = padT + 12;
+    ctx.fillStyle = 'rgba(59,91,219,0.45)'; ctx.fillRect(lx, ly - 6, 14, 12);
+    ctx.fillStyle = C.inkSoft; ctx.fillText('吸气', lx + 18, ly);
+    lx += 70;
+    ctx.fillStyle = 'rgba(47,158,68,0.45)'; ctx.fillRect(lx, ly - 6, 14, 12);
+    ctx.fillStyle = C.inkSoft; ctx.fillText('呼气', lx + 18, ly);
+    lx += 70;
+    ctx.strokeStyle = C.v1; ctx.lineWidth = 2.4;
+    ctx.beginPath(); ctx.moveTo(lx, ly); ctx.lineTo(lx + 16, ly); ctx.stroke();
+    ctx.fillStyle = C.inkSoft; ctx.fillText('HR(t)', lx + 22, ly);
+
+    // ---- readout: peak-to-trough = 2A, straight from the formula ----
+    const ptp = 2 * A;
+    readout.innerHTML =
+      '峰-谷 RSA 幅度：<strong style="color:' + C.v1 + '">' + ptp.toFixed(1) + ' bpm</strong>' +
+      ' &nbsp;(周期 ' + (60 / f).toFixed(1) + ' s，HR 在 ' +
+      tr.toFixed(0) + '–' + pk.toFixed(0) + ' bpm 间摆动)';
+  }
+
+  rate.addEventListener('input', draw);
+  depth.addEventListener('input', draw);
+  draw();
+})();
+
+</script>
+<script>
+/* ============================================================================
+ * u3 · LABS — Lab 3 (压力反射共振模拟器) + Lab 3b (Bernardi 实测 BRS)
+ *
+ * Lab 3 computes the closed delayed-negative-feedback gain with REAL complex
+ * arithmetic, point by point:
+ *     e^{-jωτ} = cos(ωτ) − j·sin(ωτ)
+ *     denom    = (1 + k·cos(ωτ)) − j·(k·sin(ωτ))
+ *     |H(f)|   = 1 / sqrt(Re² + Im²)
+ * The peak is found NUMERICALLY by scanning the curve. Every number on screen
+ * comes from this formula. No hardcoded results, no pre-rendered blends.
+ *
+ * Lab 3b is clearly-labelled MEASURED study data (Bernardi 2001 BMJ, n=23),
+ * not a live simulation.
+ * ========================================================================== */
+
+/* ---------- Lab 3 · 压力反射共振模拟器 ---------- */
+(function () {
+  const c = document.getElementById('lab3-canvas');
+  if (!c) return;
+  const W = 900, H = 380, ctx = setupCanvas(c, W, H);
+  const el = id => document.getElementById(id);
+  const tauS = el('lab3-tau'), kS = el('lab3-k'), brS = el('lab3-br');
+
+  /* frequency window (Hz) — buildplan: f ∈ [0.03, 0.5] */
+  const F_LO = 0.03, F_HI = 0.5;          // Hz
+  const BPM_LO = F_LO * 60, BPM_HI = F_HI * 60;  // ≈1.8 … 30 次/分
+  const N = 480;                          // curve samples
+
+  const m = { l: 60, r: 22, t: 26, b: 46 }, pw = W - m.l - m.r, ph = H - m.t - m.b;
+
+  /* x-axis is 次/分 (bpm); map bpm ↔ pixel */
+  const px = bpm => m.l + (bpm - BPM_LO) / (BPM_HI - BPM_LO) * pw;
+
+  /* THE real complex computation.
+   * Pure |1 / (1 + k·e^{-jωτ})| has IDENTICAL-height peaks at every ωτ = π,3π,5π…
+   * (i.e. f = 1/(2τ), 3/(2τ), …). A real baroreflex plant is low-pass: the heart /
+   * vasculature integrate, so higher harmonics are damped and only the FUNDAMENTAL
+   * peak survives. We add a 1st-order low-pass plant G(f) = 1/√(1+(f/fc)²), fc ≈ 0.15 Hz:
+   *     H(f) = G(f) / (1 + k·G(f)·e^{-jωτ})
+   *     e^{-jωτ} = cos(ωτ) − j·sin(ωτ)
+   *     denom    = (1 + k·G·cos ωτ) − j·(k·G·sin ωτ)
+   *     |H(f)|   = G / √(Re² + Im²)
+   * This keeps the fundamental at f ≈ 1/(2τ) (the 6/min physiology) and is honest:
+   * the loop has a finite bandwidth. */
+  const FC = 0.15;                                // Hz — baroreflex plant roll-off
+  function Hmag(fHz, k, tau) {
+    const wt = 2 * Math.PI * fHz * tau;           // ωτ
+    const G = 1 / Math.sqrt(1 + (fHz / FC) * (fHz / FC)); // low-pass plant magnitude
+    const re = 1 + k * G * Math.cos(wt);          // Re{1 + k·G·e^{-jωτ}}
+    const im = -k * G * Math.sin(wt);             // Im{...}  (e^{-jωτ} = cos − j·sin)
+    const denom = Math.sqrt(re * re + im * im);
+    return G / denom;
+  }
+
+  function draw() {
+    const k = +kS.value, tau = +tauS.value, brBpm = +brS.value;
+    el('lab3-tau-out').textContent = tau.toFixed(1);
+    el('lab3-k-out').textContent = k.toFixed(2);
+    el('lab3-br-out').textContent = brBpm.toFixed(1);
+
+    /* sample the curve + find peak numerically */
+    const pts = [];   // {bpm, f, H}
+    let peak = { H: -Infinity, bpm: 0, f: 0 };
+    for (let i = 0; i <= N; i++) {
+      const f = F_LO + (F_HI - F_LO) * i / N;       // Hz
+      const bpm = f * 60;
+      const Hh = Hmag(f, k, tau);
+      pts.push({ bpm, f, H: Hh });
+      if (Hh > peak.H) peak = { H: Hh, bpm, f };
+    }
+    const Hmax = peak.H;
+    /* theoretical resonance marker f ≈ 1/(2τ) */
+    const fThEoH = 1 / (2 * tau);            // Hz
+    const bpmTheo = fThEoH * 60;
+    /* user's gain at their breathing freq */
+    const Huser = Hmag(brBpm / 60, k, tau);
+
+    /* vertical scale: top a little above peak */
+    const yTop = Hmax * 1.10;
+    const py = h => m.t + (1 - h / yTop) * ph;
+
+    ctx.clearRect(0, 0, W, H);
+
+    /* --- grid + axes --- */
+    ctx.font = '12px ui-monospace,monospace';
+    ctx.strokeStyle = C.rule; ctx.lineWidth = 1;
+    /* x ticks at round 次/分 */
+    [2, 4, 6, 8, 10, 12, 16, 20, 24, 28].forEach(b => {
+      if (b < BPM_LO || b > BPM_HI) return;
+      const x = px(b);
+      ctx.globalAlpha = .45;
+      ctx.beginPath(); ctx.moveTo(x, m.t); ctx.lineTo(x, m.t + ph); ctx.stroke();
+      ctx.globalAlpha = 1; ctx.fillStyle = C.inkFaint; ctx.textAlign = 'center';
+      ctx.fillText(b, x, m.t + ph + 16);
+    });
+    /* y ticks */
+    const yticks = niceTicks(yTop);
+    yticks.forEach(v => {
+      const y = py(v);
+      ctx.globalAlpha = .35;
+      ctx.beginPath(); ctx.moveTo(m.l, y); ctx.lineTo(m.l + pw, y); ctx.stroke();
+      ctx.globalAlpha = 1; ctx.fillStyle = C.inkFaint; ctx.textAlign = 'right';
+      ctx.fillText(v.toFixed(1), m.l - 6, y + 4);
+    });
+    ctx.fillStyle = C.inkFaint; ctx.textAlign = 'center';
+    ctx.fillText('呼吸频率 f （次/分）', m.l + pw / 2, H - 8);
+    ctx.save(); ctx.translate(15, m.t + ph / 2); ctx.rotate(-Math.PI / 2);
+    ctx.fillText('闭环增益 |H(f)|', 0, 0); ctx.restore();
+
+    /* --- 1/(2τ) theoretical resonance marker line --- */
+    if (bpmTheo >= BPM_LO && bpmTheo <= BPM_HI) {
+      const xt = px(bpmTheo);
+      ctx.strokeStyle = C.v4; ctx.setLineDash([4, 4]); ctx.lineWidth = 1.5;
+      ctx.beginPath(); ctx.moveTo(xt, m.t); ctx.lineTo(xt, m.t + ph); ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.fillStyle = C.v4; ctx.textAlign = 'left';
+      ctx.font = '11px ui-monospace,monospace';
+      ctx.fillText('1/(2τ) ≈ ' + bpmTheo.toFixed(1) + '/分', Math.min(xt + 5, W - 130), m.t + 12);
+    }
+
+    /* --- the |H(f)| curve (red = HR/RSA family) --- */
+    ctx.strokeStyle = C.v1; ctx.lineWidth = 2.6; ctx.beginPath();
+    pts.forEach((p, i) => {
+      const x = px(p.bpm), y = py(p.H);
+      i ? ctx.lineTo(x, y) : ctx.moveTo(x, y);
+    });
+    ctx.stroke();
+
+    /* --- peak marker (numerically found) --- */
+    const xp = px(peak.bpm), yp = py(peak.H);
+    ctx.fillStyle = C.v1;
+    ctx.beginPath(); ctx.arc(xp, yp, 5.5, 0, 7); ctx.fill();
+    ctx.strokeStyle = '#fff'; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.arc(xp, yp, 5.5, 0, 7); ctx.stroke();
+    ctx.fillStyle = C.v1; ctx.textAlign = 'center';
+    ctx.font = '600 12px ui-monospace,monospace';
+    ctx.fillText('峰 ' + peak.bpm.toFixed(1) + '/分', xp, Math.max(yp - 12, m.t + 24));
+
+    /* --- user's breathing-frequency vertical marker (green driver) --- */
+    const xu = px(brBpm), yu = py(Huser);
+    ctx.strokeStyle = C.v3; ctx.lineWidth = 2; ctx.setLineDash([2, 3]);
+    ctx.beginPath(); ctx.moveTo(xu, m.t); ctx.lineTo(xu, m.t + ph); ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.fillStyle = C.v3;
+    ctx.beginPath(); ctx.arc(xu, yu, 5, 0, 7); ctx.fill();
+    ctx.strokeStyle = '#fff'; ctx.lineWidth = 1.6;
+    ctx.beginPath(); ctx.arc(xu, yu, 5, 0, 7); ctx.stroke();
+
+    /* --- readout (all numbers from the formula) --- */
+    const ratio = (Huser / Hmax * 100);
+    el('lab3-readout').innerHTML =
+      '复数算得 · 你 ' + brBpm.toFixed(1) + '/分 处 <b style="color:' + C.v3 + '">|H| = ' +
+        Huser.toFixed(2) + '</b>' +
+      ' &nbsp;·&nbsp; 峰在 <b style="color:' + C.v1 + '">' + peak.bpm.toFixed(1) + '/分</b>（|H|<sub>max</sub> = ' +
+        Hmax.toFixed(2) + '）' +
+      ' &nbsp;·&nbsp; 理论 1/(2τ) = <b style="color:' + C.v4 + '">' + bpmTheo.toFixed(1) + '/分</b><br>' +
+      '你踩中了峰的 <b>' + ratio.toFixed(0) + '%</b> 增益' +
+      (ratio > 92 ? ' &nbsp;<b style="color:' + C.v3 + '">✓ 几乎正中本征频率</b>'
+                  : ' &nbsp;<span style="color:' + C.inkFaint + '">把呼吸频率拖向峰，增益还能涨</span>') +
+      ' &nbsp;·&nbsp; <span style="color:' + C.inkFaint + '">峰与 1/(2τ) 略偏是因回路低通（fc≈0.15 Hz）把谐振点微微下拉、且只留基频</span>';
+  }
+
+  function niceTicks(top) {
+    const step = top <= 3 ? 0.5 : top <= 6 ? 1 : top <= 12 ? 2 : 5;
+    const out = [];
+    for (let v = step; v < top; v += step) out.push(v);
+    return out;
+  }
+
+  [tauS, kS, brS].forEach(e => e.addEventListener('input', draw));
+  draw();
+})();
+
+/* ---------- Lab 3b · Bernardi 2001 实测 BRS（MEASURED, not a sim） ---------- */
+(function () {
+  const c = document.getElementById('lab3b-canvas');
+  if (!c) return;
+  const W = 900, H = 300, ctx = setupCanvas(c, W, H);
+
+  /* MEASURED study data — Bernardi et al. 2001, BMJ 323:1446, n=23 */
+  const DATA = [
+    { label: '静息 · 自由呼吸', brs: 9.5,  color: C.inkFaint },
+    { label: '引导 ~6 次/分慢呼吸', brs: 11.5, color: C.v4 }
+  ];
+  const YMAX = 14;  // ms/mmHg axis top
+
+  function draw() {
+    ctx.clearRect(0, 0, W, H);
+    const m = { l: 70, r: 30, t: 40, b: 52 }, pw = W - m.l - m.r, ph = H - m.t - m.b;
+    const py = v => m.t + (1 - v / YMAX) * ph;
+
+    /* y grid */
+    ctx.font = '12px ui-monospace,monospace';
+    for (let v = 0; v <= YMAX; v += 2) {
+      const y = py(v);
+      ctx.strokeStyle = C.rule; ctx.globalAlpha = .4; ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.moveTo(m.l, y); ctx.lineTo(m.l + pw, y); ctx.stroke();
+      ctx.globalAlpha = 1; ctx.fillStyle = C.inkFaint; ctx.textAlign = 'right';
+      ctx.fillText(v, m.l - 8, y + 4);
+    }
+    ctx.save(); ctx.translate(18, m.t + ph / 2); ctx.rotate(-Math.PI / 2);
+    ctx.fillStyle = C.inkFaint; ctx.textAlign = 'center';
+    ctx.fillText('压力反射敏感度 BRS （ms/mmHg）', 0, 0); ctx.restore();
+
+    /* bars */
+    const bw = 150, gap = (pw - bw * DATA.length) / (DATA.length + 1);
+    DATA.forEach((d, i) => {
+      const x = m.l + gap + i * (bw + gap);
+      const y = py(d.brs), h = m.t + ph - y;
+      ctx.fillStyle = d.color; ctx.globalAlpha = .9;
+      ctx.fillRect(x, y, bw, h);
+      ctx.globalAlpha = 1;
+      /* value on bar */
+      ctx.fillStyle = d.color; ctx.textAlign = 'center';
+      ctx.font = '700 18px ui-monospace,monospace';
+      ctx.fillText(d.brs.toFixed(1), x + bw / 2, y - 10);
+      /* label below */
+      ctx.fillStyle = C.inkSoft; ctx.font = '13px ui-sans-serif,system-ui,sans-serif';
+      ctx.fillText(d.label, x + bw / 2, m.t + ph + 22);
+    });
+
+    /* delta + significance bracket */
+    const x0 = m.l + gap + bw / 2;
+    const x1 = m.l + gap + (bw + gap) + bw / 2;
+    const yb = py(DATA[1].brs) - 26;
+    ctx.strokeStyle = C.ink; ctx.lineWidth = 1.4; ctx.globalAlpha = .7;
+    ctx.beginPath();
+    ctx.moveTo(x0, py(DATA[0].brs) - 26); ctx.lineTo(x0, yb);
+    ctx.lineTo(x1, yb); ctx.lineTo(x1, py(DATA[1].brs) - 14);
+    ctx.stroke(); ctx.globalAlpha = 1;
+    ctx.fillStyle = C.ink; ctx.textAlign = 'center';
+    ctx.font = '600 13px ui-monospace,monospace';
+    ctx.fillText('+2.0 ms/mmHg · P < 0.05', (x0 + x1) / 2, yb - 8);
+
+    /* MEASURED badge */
+    ctx.fillStyle = C.v3; ctx.textAlign = 'left';
+    ctx.font = '700 12px ui-sans-serif,system-ui,sans-serif';
+    ctx.fillText('● 实测数据（非模拟）', m.l, 24);
+  }
+
+  el_readout();
+  function el_readout() {
+    const r = document.getElementById('lab3b-readout');
+    if (r) r.innerHTML =
+      '实测 · Bernardi et al. 2001, <i>BMJ</i> 323:1446（n=23）：把呼吸引导到 ~6 次/分，' +
+      '压力反射敏感度从 <b>9.5</b> 升到 <b style="color:' + C.v4 + '">11.5 ms/mmHg</b>（P&lt;0.05）。' +
+      '这是 Lab 3 的模型预言在真人身上的<b>独立验证</b>：踩中本征频率，闭环增益真的更高。';
+  }
+  draw();
+})();
+
+</script>
+<script>
+/* ============================================================================
+ * UNIT 4 labs — two BREAK-IT calculators for sec-exhale.
+ * Globals provided by page chrome: setupCanvas, C, drawArrow.
+ * Each lab is its own IIFE, guarded, draws in CSS px, ends in draw().
+ * Every number on screen comes from the formula beside it — nothing hardcoded.
+ * ========================================================================== */
+
+/* ----------------------------------------------------------------------------
+ * Lab 4 · lab4 — I:E ratio explorer at fixed 6/min.
+ * BREAK-IT #1: the "longer exhale → more vagal/HRV" myth.
+ * The breathing waveform's SHAPE skews with I:E, but the RSA peak-to-trough
+ * amplitude (= what RMSSD/HF actually measure) stays ~flat. Honest null,
+ * per Meehan & Shaffer 2024 (1:1 vs 1:2 @ 6/min, all HRV n.s.).
+ * -------------------------------------------------------------------------- */
+(function () {
+  "use strict";
+  const c = document.getElementById("lab4-canvas");
+  if (!c) return;
+  const W = 880, H = 320;
+  const ctx = setupCanvas(c, W, H);
+
+  const ieEl = document.getElementById("lab4-ie");
+  const ieOut = document.getElementById("lab4-ie-out");
+  const ro = document.getElementById("lab4-readout");
+
+  const T = 10.0;            // period (s) — fixed 6/min
+  const HR0 = 66;            // baseline HR (bpm)
+  const A = 9;               // nominal RSA half-excursion (bpm)
+  const N = 600;             // samples across the window
+
+  /* breathing displacement b(t) in [0,1] over one period.
+     inhale fraction = 1/(1+r) of the period (rises 0→1, half-sine),
+     exhale fraction = r/(1+r)         (falls 1→0, half-sine).
+     Full lung excursion every breath regardless of how time is split. */
+  function breath(tt, r) {
+    const ph = ((tt % T) + T) % T;          // [0,T)
+    const tin = T / (1 + r);                 // inhale duration
+    if (ph < tin) {
+      // 0 → 1 over inhale
+      return 0.5 - 0.5 * Math.cos(Math.PI * (ph / tin));
+    } else {
+      // 1 → 0 over exhale
+      const u = (ph - tin) / (T - tin);
+      return 0.5 + 0.5 * Math.cos(Math.PI * u);
+    }
+  }
+
+  /* instantaneous HR via the RSA gate: HR rises on inhale, falls on exhale.
+     We tie HR deviation to the breathing POSITION (centered at 0.5). Because
+     the lung covers the full 0→1 range every breath, the peak-to-trough HR
+     excursion is essentially the same no matter the I:E split — only the time
+     SHAPE skews. A tiny rate-of-change term adds the small (~±2%) coupling we
+     are honest about; it never makes amplitude track the ratio. */
+  function hr(tt, r) {
+    const b = breath(tt, r);                 // 0..1
+    const dt = 0.04;
+    const dv = (breath(tt + dt, r) - breath(tt - dt, r)) / (2 * dt); // db/dt
+    // position term dominates (sets amplitude); velocity term only skews shape.
+    return HR0 + A * (b - 0.5) * 2 + 0.5 * dv;
+  }
+
+  function draw() {
+    const r = parseFloat(ieEl.value);
+    if (ieOut) ieOut.textContent = "1 : " + r.toFixed(1);
+
+    ctx.clearRect(0, 0, W, H);
+
+    const m = { l: 46, r: 18, t: 18, b: 30 };
+    const pw = W - m.l - m.r, ph = H - m.t - m.b;
+    // two stacked panels: breathing (top), HR (bottom)
+    const bH = ph * 0.42, gap = 16, hH = ph - bH - gap;
+    const bY = m.t, hY = m.t + bH + gap;
+
+    // sample two periods so the asymmetry is visible
+    const span = 2 * T;
+    const xs = (tt) => m.l + (tt / span) * pw;
+
+    // ---- breathing panel ----
+    // shade inhale vs exhale under the curve, per period
+    for (let k = 0; k < 2; k++) {
+      const t0 = k * T, tin = T / (1 + r);
+      // inhale region (blue)
+      ctx.fillStyle = "rgba(59,91,219,0.10)";
+      ctx.fillRect(xs(t0), bY, xs(t0 + tin) - xs(t0), bH);
+      // exhale region (green)
+      ctx.fillStyle = "rgba(47,158,68,0.10)";
+      ctx.fillRect(xs(t0 + tin), bY, xs(t0 + T) - xs(t0 + tin), bH);
+    }
+    // breathing curve, colored by phase
+    let prevIn = null;
+    ctx.lineWidth = 2.4;
+    for (let i = 0; i <= N; i++) {
+      const tt = (i / N) * span;
+      const ph2 = ((tt % T) + T) % T;
+      const isIn = ph2 < T / (1 + r);
+      const b = breath(tt, r);
+      const X = xs(tt), Y = bY + bH - b * (bH - 4) - 2;
+      if (i === 0 || isIn !== prevIn) {
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.strokeStyle = isIn ? C.v2 : C.v3;
+        ctx.moveTo(X, Y);
+      } else {
+        ctx.lineTo(X, Y);
+      }
+      prevIn = isIn;
+    }
+    ctx.stroke();
+    ctx.fillStyle = C.inkFaint;
+    ctx.font = "600 12px ui-sans-serif,system-ui";
+    ctx.textAlign = "left";
+    ctx.fillText("呼吸相位", m.l, bY - 4 < 8 ? 12 : bY - 4);
+
+    // ---- HR panel ----
+    // compute hr over the window, track min/max for the amplitude readout
+    const pts = [];
+    let lo = Infinity, hi = -Infinity;
+    for (let i = 0; i <= N; i++) {
+      const tt = (i / N) * span;
+      const v = hr(tt, r);
+      pts.push(v);
+      if (v < lo) lo = v;
+      if (v > hi) hi = v;
+    }
+    const amp = hi - lo;                       // peak-to-trough RSA amplitude (bpm)
+
+    // HR axis: fix the range so the eye sees amplitude staying put
+    const yLo = HR0 - A - 2, yHi = HR0 + A + 2;
+    const yH = (v) => hY + hH - ((v - yLo) / (yHi - yLo)) * hH;
+
+    // baseline + amplitude band
+    ctx.strokeStyle = C.rule;
+    ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(m.l, yH(HR0)); ctx.lineTo(m.l + pw, yH(HR0)); ctx.stroke();
+    // peak & trough guide lines
+    ctx.setLineDash([4, 4]);
+    ctx.strokeStyle = "rgba(224,49,49,0.35)";
+    ctx.beginPath(); ctx.moveTo(m.l, yH(hi)); ctx.lineTo(m.l + pw, yH(hi)); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(m.l, yH(lo)); ctx.lineTo(m.l + pw, yH(lo)); ctx.stroke();
+    ctx.setLineDash([]);
+
+    // HR curve (red)
+    ctx.strokeStyle = C.v1;
+    ctx.lineWidth = 2.4;
+    ctx.beginPath();
+    for (let i = 0; i <= N; i++) {
+      const tt = (i / N) * span;
+      const X = xs(tt), Y = yH(pts[i]);
+      if (i === 0) ctx.moveTo(X, Y); else ctx.lineTo(X, Y);
+    }
+    ctx.stroke();
+
+    // y ticks
+    ctx.fillStyle = C.inkFaint;
+    ctx.font = "11px ui-monospace,monospace";
+    ctx.textAlign = "right";
+    [yLo, HR0, yHi].forEach((v) => ctx.fillText(v.toFixed(0), m.l - 6, yH(v) + 4));
+    ctx.textAlign = "left";
+    ctx.fillStyle = C.v1;
+    ctx.font = "600 12px ui-sans-serif,system-ui";
+    ctx.fillText("瞬时心率 (bpm)", m.l, hY - 4);
+
+    // amplitude bracket on the right
+    ctx.strokeStyle = C.v1; ctx.lineWidth = 1.6;
+    const bx = m.l + pw + 2;
+    ctx.beginPath();
+    ctx.moveTo(bx, yH(hi)); ctx.lineTo(bx, yH(lo)); ctx.stroke();
+
+    if (ro) {
+      ro.innerHTML =
+        "I:E = <strong>1 : " + r.toFixed(1) + "</strong> @ 6/min ｜ " +
+        "<strong style='color:var(--v1)'>峰-谷 RSA 幅度 = " + amp.toFixed(2) + " bpm</strong> " +
+        "（基线 " + HR0 + "，峰 " + hi.toFixed(1) + " / 谷 " + lo.toFixed(1) + "）。" +
+        "<br>把 I:E 从 1:1 拖到 1:3：左侧蓝/绿配比明显变了，红色波形左右不对称——" +
+        "可右边这个幅度数<strong>几乎不动</strong>。这就是 p=.26：形状变了，HRV 的尺子量不到。";
+    }
+  }
+
+  ieEl.addEventListener("input", draw);
+  draw();
+})();
+
+/* ----------------------------------------------------------------------------
+ * Lab 5 · lab5 — minute ventilation / CO2 calculator.
+ * BREAK-IT #2: "just breathe slow" → slow-and-shallow = hypoventilation.
+ *   V̇A   = f · (Vt − Vd),  Vd = 150 mL                     [mL/min]
+ *   PaCO2 = K · V̇CO2 / V̇A,  V̇CO2 = 200 mL/min
+ *   K chosen so 12/min × 500 mL → PaCO2 = 40 mmHg:
+ *     V̇A = 12·350 = 4200;  K = 40·4200/200 = 840.
+ * -------------------------------------------------------------------------- */
+(function () {
+  "use strict";
+  const c = document.getElementById("lab5-canvas");
+  if (!c) return;
+  const W = 880, H = 230;
+  const ctx = setupCanvas(c, W, H);
+
+  const fEl = document.getElementById("lab5-f");
+  const vtEl = document.getElementById("lab5-vt");
+  const fOut = document.getElementById("lab5-f-out");
+  const vtOut = document.getElementById("lab5-vt-out");
+  const ro = document.getElementById("lab5-readout");
+
+  const VD = 150;            // dead space (mL)
+  const VCO2 = 200;          // CO2 production (mL/min), resting
+  const K = 840;             // calibration constant (see header)
+
+  function VA(f, vt) { return f * (vt - VD); }            // mL/min
+  function paco2(f, vt) { return K * VCO2 / VA(f, vt); }  // mmHg
+
+  // PaCO2 scale on screen
+  const PMIN = 0, PMAX = 120;
+  // state bands by PaCO2 (mmHg): low (alkalosis) / normal / high (hypovent.)
+  function stateOf(p) {
+    if (p < 35) return { txt: "过度通气 · 低 CO₂（呼吸性碱中毒）", col: C.accent2, key: "low" };
+    if (p > 45) return { txt: "低通气 · 高 CO₂（CO₂ 滞留）", col: C.v5, key: "high" };
+    return { txt: "正常（35–45 mmHg）", col: C.v3, key: "normal" };
+  }
+
+  function setSliders(f, vt) {
+    fEl.value = String(f); vtEl.value = String(vt);
+    draw();
+  }
+
+  function draw() {
+    const f = parseInt(fEl.value, 10);
+    const vt = parseInt(vtEl.value, 10);
+    if (fOut) fOut.textContent = String(f);
+    if (vtOut) vtOut.textContent = String(vt);
+
+    const va = VA(f, vt);
+    const p = paco2(f, vt);
+    const st = stateOf(p);
+
+    ctx.clearRect(0, 0, W, H);
+
+    const m = { l: 24, r: 24, t: 48, b: 60 };
+    const pw = W - m.l - m.r;
+    const barY = m.t, barH = 40;
+    const xOf = (pp) => m.l + (Math.max(PMIN, Math.min(PMAX, pp)) - PMIN) / (PMAX - PMIN) * pw;
+
+    // three colored bands: low / normal / high
+    // low: 0..35 teal, normal: 35..45 green, high: 45..120 amber
+    function band(p0, p1, col) {
+      ctx.fillStyle = col;
+      ctx.fillRect(xOf(p0), barY, xOf(p1) - xOf(p0), barH);
+    }
+    band(0, 35, "rgba(12,133,153,0.20)");
+    band(35, 45, "rgba(47,158,68,0.28)");
+    band(45, 120, "rgba(232,160,0,0.20)");
+    // band outline
+    ctx.strokeStyle = C.rule; ctx.lineWidth = 1;
+    ctx.strokeRect(m.l, barY, pw, barH);
+
+    // band labels
+    ctx.font = "600 12px ui-sans-serif,system-ui";
+    ctx.textAlign = "center"; ctx.textBaseline = "middle";
+    ctx.fillStyle = C.accent2; ctx.fillText("过度通气 · 碱中毒", (xOf(0) + xOf(35)) / 2, barY + barH / 2);
+    ctx.fillStyle = C.v3; ctx.fillText("正常", (xOf(35) + xOf(45)) / 2, barY + barH / 2);
+    ctx.fillStyle = C.v5; ctx.fillText("低通气 · 高 CO₂", (xOf(45) + xOf(120)) / 2, barY + barH / 2);
+
+    // tick marks 35 / 45 / and a few refs
+    ctx.fillStyle = C.inkFaint;
+    ctx.font = "11px ui-monospace,monospace";
+    ctx.textBaseline = "top";
+    [0, 35, 40, 45, 80, 120].forEach((v) => {
+      const x = xOf(v);
+      ctx.strokeStyle = C.rule2 || "#cdd2dc";
+      ctx.beginPath(); ctx.moveTo(x, barY + barH); ctx.lineTo(x, barY + barH + 5); ctx.stroke();
+      ctx.fillText(String(v), x, barY + barH + 7);
+    });
+
+    // pointer at current PaCO2
+    const px = xOf(p);
+    drawArrow(ctx, px, barY - 18, px, barY - 1, st.col, 3);
+    ctx.fillStyle = st.col;
+    ctx.font = "700 17px ui-monospace,monospace";
+    ctx.textAlign = "center"; ctx.textBaseline = "bottom";
+    const lbl = (p > PMAX ? "≥120" : p.toFixed(1)) + " mmHg";
+    ctx.fillText(lbl, Math.max(m.l + 34, Math.min(W - m.r - 34, px)), barY - 20);
+
+    // formula readout under the bar (numbers from the formula)
+    ctx.fillStyle = C.inkSoft;
+    ctx.font = "13px ui-monospace,monospace";
+    ctx.textAlign = "left"; ctx.textBaseline = "alphabetic";
+    const fy = barY + barH + 34;
+    ctx.fillText(
+      "V̇A = " + f + "·(" + vt + "−150) = " + va.toLocaleString() + " mL/min   ｜   " +
+      "PaCO₂ = 840·200/" + va.toLocaleString() + " = " + (p > PMAX ? "≥120" : p.toFixed(1)) + " mmHg",
+      m.l, fy
+    );
+
+    if (ro) {
+      const ratio = (va / 4200 * 100); // vs normal 4200 mL/min
+      ro.innerHTML =
+        "<strong>" + f + "/min × " + vt + " mL</strong> → " +
+        "肺泡通气 <strong>V̇A = " + va.toLocaleString() + " mL/min</strong>（正常的 " + ratio.toFixed(0) + "%）→ " +
+        "<strong style='color:" + (st.key === "normal" ? "var(--v3)" : st.key === "high" ? "var(--v5)" : "var(--accent-2)") +
+        "'>PaCO₂ ≈ " + (p > PMAX ? "≥120" : p.toFixed(1)) + " mmHg ｜ " + st.txt + "</strong>。";
+    }
+  }
+
+  fEl.addEventListener("input", draw);
+  vtEl.addEventListener("input", draw);
+
+  const p1 = document.getElementById("lab5-p1");
+  const p2 = document.getElementById("lab5-p2");
+  const p3 = document.getElementById("lab5-p3");
+  if (p1) p1.addEventListener("click", () => setSliders(6, 400));
+  if (p2) p2.addEventListener("click", () => setSliders(30, 1000));
+  if (p3) p3.addEventListener("click", () => setSliders(6, 900));
+
+  draw();
+})();
+
+</script>
+<script>
+/* ============================================================================
+ * U5 · sec-bakeoff labs
+ *   L6  斯坦福 RCT 实测条形图  — MEASURED data (Balban 2023, Cell Rep Med, n=111)
+ *   L7  技术定位图           — scatter;每点坐标由属性加权 COMPUTED (展示 compute)
+ * Globals from page chrome: setupCanvas(c,w,h), C{}, drawArrow(...)
+ * ========================================================================== */
+
+/* ------------------------------------------------------------------ L6 ----
+ * 正性情绪日增 (units/day), 4 臂.
+ *  - 循环叹息 1.91, 正念 1.22  → 研究报告的确切数 → FILLED 条.
+ *  - box / 循环过度通气         → 只有方向 (介于二者之间, < 叹息) → HOLLOW/描边条
+ *                                + "≈方向性" 标注. 不编精确数: 高度只示意一个区间中点.
+ * filled vs hollow 视觉区分 = 实测 vs 仅示意 (本节纪律).
+ * -------------------------------------------------------------------------- */
+(function () {
+  const c = document.getElementById('lab6-canvas'); if (!c) return;
+  const W = 880, H = 420, ctx = setupCanvas(c, W, H);
+  const readout = document.getElementById('lab6-readout');
+
+  // data: measured=true → 实心 + 精确数; measured=false → 空心 + 仅方向(区间)
+  // 方向性条的 value 取自 "介于正念 1.22 与叹息 1.91 之间且 < 叹息" 的中点示意值,
+  // 并显式标注它只是方向, 不是研究报告的精确数.
+  const BARS = [
+    { label: '循环叹息',     value: 1.91, measured: true,  col: C.v3,
+      note: '双吸+长呼 · 正性情绪日增最大' },
+    { label: '正念冥想\n(对照)', value: 1.22, measured: true,  col: C.v4,
+      note: '对照臂 · 研究报告确切数' },
+    { label: 'box 4-4-4-4', value: 1.55, measured: false, col: C.inkSoft,
+      note: '仅方向: 介于二者, < 叹息' },
+    { label: '循环过度通气\n(Wim-Hof样)', value: 1.45, measured: false, col: C.v5,
+      note: '仅方向: 介于二者, < 叹息' }
+  ];
+
+  const M = { l: 64, r: 28, t: 40, b: 76 };
+  const PW = W - M.l - M.r, PH = H - M.t - M.b;
+  const x0 = M.l, yBase = M.t + PH;
+  const Y_MAX = 2.2;                              // axis top, units/day
+  const yOf = v => yBase - (v / Y_MAX) * PH;
+
+  function draw() {
+    ctx.clearRect(0, 0, W, H);
+
+    // title
+    ctx.fillStyle = C.ink; ctx.font = '700 15px ui-sans-serif, system-ui';
+    ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic';
+    ctx.fillText('正性情绪日增 (单位/天) · 实测 n=111, Balban 2023, Cell Rep Med', x0, 22);
+
+    // y grid + ticks
+    ctx.textAlign = 'right'; ctx.textBaseline = 'middle';
+    ctx.font = '12px ui-monospace, monospace';
+    for (let v = 0; v <= Y_MAX + 1e-9; v += 0.5) {
+      const y = yOf(v);
+      ctx.strokeStyle = C.rule; ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.moveTo(x0, y); ctx.lineTo(x0 + PW, y); ctx.stroke();
+      ctx.fillStyle = C.inkFaint; ctx.fillText(v.toFixed(1), x0 - 8, y);
+    }
+    // y axis title
+    ctx.save();
+    ctx.translate(18, M.t + PH / 2); ctx.rotate(-Math.PI / 2);
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillStyle = C.inkSoft; ctx.font = '600 12px ui-sans-serif, system-ui';
+    ctx.fillText('正性情绪日增 (单位/天)', 0, 0);
+    ctx.restore();
+
+    // bars
+    const n = BARS.length;
+    const slot = PW / n, bw = Math.min(86, slot * 0.56);
+    BARS.forEach((b, i) => {
+      const cx = x0 + slot * (i + 0.5);
+      const bx = cx - bw / 2, by = yOf(b.value), bh = yBase - by;
+
+      if (b.measured) {
+        // FILLED = 研究报告确切数
+        ctx.fillStyle = b.col; ctx.globalAlpha = 0.85;
+        ctx.fillRect(bx, by, bw, bh); ctx.globalAlpha = 1;
+        ctx.strokeStyle = b.col; ctx.lineWidth = 1.5; ctx.strokeRect(bx, by, bw, bh);
+        // exact number on top
+        ctx.fillStyle = b.col; ctx.font = '700 16px ui-monospace, monospace';
+        ctx.textAlign = 'center'; ctx.textBaseline = 'bottom';
+        ctx.fillText(b.value.toFixed(2), cx, by - 6);
+      } else {
+        // HOLLOW + dashed = 仅方向性, 不是精确数
+        ctx.save();
+        ctx.fillStyle = b.col; ctx.globalAlpha = 0.08;
+        ctx.fillRect(bx, by, bw, bh); ctx.restore();
+        ctx.strokeStyle = b.col; ctx.lineWidth = 2; ctx.setLineDash([6, 4]);
+        ctx.strokeRect(bx, by, bw, bh); ctx.setLineDash([]);
+        // "≈方向性" instead of a fake number
+        ctx.fillStyle = b.col; ctx.font = '700 13px ui-sans-serif, system-ui';
+        ctx.textAlign = 'center'; ctx.textBaseline = 'bottom';
+        ctx.fillText('≈方向性', cx, by - 6);
+      }
+
+      // x label (may be 2 lines)
+      ctx.fillStyle = C.inkSoft; ctx.font = '600 12.5px ui-sans-serif, system-ui';
+      ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+      b.label.split('\n').forEach((ln, k) => ctx.fillText(ln, cx, yBase + 8 + k * 15));
+    });
+
+    // baseline
+    ctx.strokeStyle = C.rule2 || C.inkFaint; ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.moveTo(x0, yBase); ctx.lineTo(x0 + PW, yBase); ctx.stroke();
+
+    // legend: filled vs hollow
+    const lx = x0 + PW - 230, ly = 14;
+    ctx.fillStyle = C.inkSoft; ctx.globalAlpha = 0.85;
+    ctx.fillRect(lx, ly, 16, 11); ctx.globalAlpha = 1;
+    ctx.font = '11.5px ui-sans-serif, system-ui'; ctx.fillStyle = C.inkSoft;
+    ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+    ctx.fillText('实心=确切数', lx + 22, ly + 5.5);
+    ctx.strokeStyle = C.inkFaint; ctx.lineWidth = 2; ctx.setLineDash([6, 4]);
+    ctx.strokeRect(lx + 118, ly, 16, 11); ctx.setLineDash([]);
+    ctx.fillText('空心=仅方向', lx + 140, ly + 5.5);
+
+    readout.innerHTML =
+      '<b>循环叹息 1.91/天</b> &gt; 正念对照 1.22/天（确切数）；'
+      + 'box 与循环过度通气只有“介于二者之间且小于叹息”的方向性结论——'
+      + '故用<b>描边空心条</b>，不编精确数字。';
+  }
+
+  draw();
+})();
+
+
+/* ------------------------------------------------------------------ L7 ----
+ * 技术定位图: scatter.
+ *   x = 镇静 ↔ 唤醒        (left 镇静, right 唤醒)
+ *   y = 工作期认知负荷      (越高 = 屏息/计数越多 = 越抢注意力)
+ * 每个技术由属性 (屏息段数 holds, 计数负荷 count, 唤醒方向 arousal) 加权 COMPUTED:
+ *   x = base 0.5 + 0.18*arousal + 0.06*holds        ∈ approx [0,1]
+ *   y = wLoad * (0.30*holds + 0.22*count)            (slider wLoad 重排 y)
+ * 左下 = 低负荷 + 镇静 = "适合工作期" 高亮区.
+ * -------------------------------------------------------------------------- */
+(function () {
+  const c = document.getElementById('lab7-canvas'); if (!c) return;
+  const W = 880, H = 480, ctx = setupCanvas(c, W, H);
+  const wEl = document.getElementById('lab7-w');
+  const wOut = document.getElementById('lab7-wout');
+  const readout = document.getElementById('lab7-readout');
+
+  // attributes (the RAW inputs the coordinates are COMPUTED from) ----------
+  //  holds   : # 屏息段 per cycle
+  //  count   : 计数/数拍子负荷 0..1 (要不要在脑子里数)
+  //  arousal : 唤醒方向 -1..+1 (镇静 .. 唤醒)
+  const TECH = [
+    { id: 'sigh',  label: '循环叹息',            holds: 0,   count: 0.15, arousal: -0.55, col: C.v3 },
+    { id: 'nose',  label: '慢鼻呼吸/延长呼气',   holds: 0,   count: 0.05, arousal: -0.70, col: C.v3 },
+    { id: 'coh6',  label: 'coherent 6/min',      holds: 0,   count: 0.30, arousal: -0.80, col: C.v2 },
+    { id: 'box',   label: 'box 4-4-4-4',         holds: 2,   count: 0.85, arousal: -0.10, col: C.inkSoft },
+    { id: '478',   label: '4-7-8',               holds: 1,   count: 0.80, arousal: -0.25, col: C.v5 },
+    { id: 'wimhof',label: 'Wim Hof',             holds: 1,   count: 0.45, arousal: +0.90, col: C.v1 }
+  ];
+
+  // weights — y scaled by the slider "你多在意不分心"
+  let wLoad = 1.0;
+
+  function coords(t) {
+    // x: 0=镇静(left) .. 1=唤醒(right). arousal dominates; holds nudge右(应激味).
+    let x = 0.5 + 0.30 * t.arousal + 0.05 * t.holds;
+    x = Math.max(0.02, Math.min(0.98, x));
+    // y: 工作期认知负荷, scaled by slider. holds + count drive it.
+    let yRaw = 0.30 * t.holds + 0.55 * t.count;     // raw load ~[0..1.05]
+    let y = Math.max(0.02, Math.min(0.98, wLoad * yRaw));
+    return { x, y, yRaw };
+  }
+
+  const M = { l: 70, r: 30, t: 30, b: 58 };
+  const PW = W - M.l - M.r, PH = H - M.t - M.b;
+  const x0 = M.l, x1 = M.l + PW, yTop = M.t, yBot = M.t + PH;
+  const px = u => x0 + u * PW;
+  const py = v => yBot - v * PH;            // y up = more load
+
+  function draw() {
+    ctx.clearRect(0, 0, W, H);
+
+    // ---- "适合工作期" 区: 左下 (低负荷 + 镇静) ----
+    // x < 0.45 (镇静侧) AND y < 0.30 (低负荷)
+    const zx = px(0), zw = px(0.45) - px(0);
+    const zyTop = py(0.30), zh = yBot - zyTop;
+    ctx.fillStyle = C.v3; ctx.globalAlpha = 0.10;
+    ctx.fillRect(zx, zyTop, zw, zh); ctx.globalAlpha = 1;
+    ctx.strokeStyle = C.v3; ctx.lineWidth = 1.5; ctx.setLineDash([5, 4]);
+    ctx.strokeRect(zx, zyTop, zw, zh); ctx.setLineDash([]);
+    ctx.fillStyle = C.v3; ctx.font = '700 12.5px ui-sans-serif, system-ui';
+    ctx.textAlign = 'left'; ctx.textBaseline = 'bottom';
+    ctx.fillText('适合工作期 (低负荷+镇静)', zx + 8, yBot - 8);
+
+    // ---- frame ----
+    ctx.strokeStyle = C.rule; ctx.lineWidth = 1.5;
+    ctx.strokeRect(x0, yTop, PW, PH);
+
+    // ---- axis labels ----
+    ctx.fillStyle = C.inkSoft; ctx.font = '600 12.5px ui-sans-serif, system-ui';
+    ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+    ctx.fillText('← 镇静        唤醒 →   (自主神经方向)', (x0 + x1) / 2, yBot + 16);
+    ctx.fillStyle = C.v4; ctx.textAlign = 'left';
+    ctx.fillText('镇静', x0 + 4, yBot + 16);
+    ctx.fillStyle = C.v5; ctx.textAlign = 'right';
+    ctx.fillText('唤醒', x1 - 4, yBot + 16);
+    ctx.save();
+    ctx.translate(20, (yTop + yBot) / 2); ctx.rotate(-Math.PI / 2);
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillStyle = C.inkSoft;
+    ctx.fillText('↑ 工作期认知负荷 (屏息/计数越多越高)', 0, 0);
+    ctx.restore();
+
+    // ---- plot points ----
+    const placed = [];
+    let best = null;
+    TECH.forEach(t => {
+      const co = coords(t);
+      const cx = px(co.x), cy = py(co.y);
+
+      // "适合工作期" iff in zone
+      const fit = (co.x < 0.45 && co.y < 0.30);
+      if (fit && (!best || co.y < best.y)) best = { t, ...co };
+
+      // point
+      ctx.beginPath(); ctx.arc(cx, cy, 8, 0, Math.PI * 2);
+      ctx.fillStyle = t.col; ctx.globalAlpha = 0.88; ctx.fill(); ctx.globalAlpha = 1;
+      ctx.lineWidth = fit ? 3 : 1.5;
+      ctx.strokeStyle = fit ? C.v3 : t.col; ctx.stroke();
+
+      // label — nudge apart vertically if crowded
+      let ly = cy - 13;
+      placed.forEach(p => { if (Math.abs(p.x - cx) < 110 && Math.abs(p.y - ly) < 15) ly = p.y - 16; });
+      placed.push({ x: cx, y: ly });
+      ctx.fillStyle = t.col; ctx.font = '600 12px ui-sans-serif, system-ui';
+      ctx.textBaseline = 'bottom';
+      ctx.textAlign = (cx > x1 - 130) ? 'right' : 'left';
+      const lx = (cx > x1 - 130) ? cx - 11 : cx + 11;
+      ctx.fillText(t.label, lx, ly + 4);
+    });
+
+    // readout: show the computed coords + the work-period winner
+    const lines = TECH.map(t => {
+      const co = coords(t);
+      return t.label + ' (x=' + co.x.toFixed(2) + ', 负荷=' + co.y.toFixed(2) + ')';
+    });
+    let html = '<b>算出的坐标</b>（屏息+计数 → 负荷；唤醒方向 → x）：'
+      + lines.join('；') + '。<br>';
+    if (best) {
+      html += '<span style="color:var(--v3)"><b>落在“适合工作期”区且负荷最低：'
+        + best.t.label + '</b></span> — 零屏息、近乎零计数、镇静方向。';
+    } else {
+      html += '<span style="color:var(--v1)">当前权重下没有技术落进工作期甜区。</span>';
+    }
+    readout.innerHTML = html;
+  }
+
+  if (wEl) wEl.addEventListener('input', () => {
+    wLoad = parseFloat(wEl.value);
+    if (wOut) wOut.textContent = wLoad.toFixed(1) + '×';
+    draw();
+  });
+
+  draw();
+})();
+
+</script>
+<script>
+/* ============================================================================
+ * Lab 8 · u6posture — 坐姿 → 潮气量 / 吸气压 / 分钟通气
+ * Real computation (no prerendered blends, no hardcoded results):
+ *   posture ∈ [0,1]   0 = 含胸(slumped)   1 = 直坐(upright)
+ *   Vt   = Vt0 · (1 + α·posture)            tidal volume (mL)
+ *   SNIP = SNIP_slump + ΔSNIP·posture       吸气压代理 (cmH₂O); Albarrati 2018:
+ *          含胸比直坐低 8.7 cmH₂O → ΔSNIP = 8.7
+ *   V̇E  = rate · Vt / 1000                  minute ventilation (L/min), rate fixed @6/min
+ *   diaphragm descent ∝ posture             含胸时膈肌受限、下沉行程小
+ * The number painted on screen is the one the formula beside it produces.
+ * Modest, honestly-labeled magnitudes — this is a ~12% effect, not a miracle.
+ * ========================================================================== */
+(function () {
+  const c = document.getElementById('lab8-canvas'); if (!c) return;
+  const W = 880, H = 380, ctx = setupCanvas(c, W, H);
+
+  const sPosture = document.getElementById('lab8-posture');
+  const oPosture = document.getElementById('lab8-posture-out');
+  const readout  = document.getElementById('lab8-readout');
+
+  // ---- model constants ----
+  const Vt0       = 500;    // mL — slumped-baseline tidal volume reference
+  const ALPHA     = 0.12;   // upright → +12% Vt: modest, in the measured direction
+  const RATE      = 6;      // breaths/min — at the ~6/min resonance target
+  const SNIP_SLUMP = 81.3;  // cmH₂O at posture=0 (含胸)
+  const D_SNIP     = 8.7;   // cmH₂O gained slumped→upright (Albarrati 2018, p=0.04)
+
+  function model(p) {
+    const Vt   = Vt0 * (1 + ALPHA * p);          // mL
+    const SNIP = SNIP_SLUMP + D_SNIP * p;        // cmH₂O
+    const VE   = RATE * Vt / 1000;               // L/min
+    return { Vt, SNIP, VE };
+  }
+
+  function roundRect(x, y, w, h, r) {
+    ctx.beginPath();
+    ctx.moveTo(x + r, y);
+    ctx.arcTo(x + w, y, x + w, y + h, r);
+    ctx.arcTo(x + w, y + h, x, y + h, r);
+    ctx.arcTo(x, y + h, x, y, r);
+    ctx.arcTo(x, y, x + w, y, r);
+    ctx.closePath();
+  }
+
+  // ---- left panel: torso + diaphragm descent illustration -------------------
+  // The diaphragm dome sits higher (less descent room) when slumped; it can
+  // travel down further when upright. We draw the resting dome + the descended
+  // dome on inhale; the gap between them IS the tidal excursion the math gives.
+  function drawTorso(p, m) {
+    const cx = 165, topY = 70, ribW = 150, ribH = 230;
+    const lx = cx - ribW / 2, rx = cx + ribW / 2;
+
+    // posture lean: slumped torso tilts forward & compresses vertically
+    const lean = (1 - p);                     // 0 upright … 1 slumped
+    const tilt = lean * 26;                   // px horizontal shear at top
+    const squash = lean * 22;                 // px vertical compression
+
+    // ribcage outline (a leaned trapezoid when slumped, upright box otherwise)
+    ctx.save();
+    ctx.strokeStyle = C.inkSoft; ctx.lineWidth = 2.5;
+    ctx.beginPath();
+    ctx.moveTo(lx + tilt, topY + squash);
+    ctx.lineTo(rx + tilt, topY + squash);
+    ctx.lineTo(rx, topY + ribH);
+    ctx.lineTo(lx, topY + ribH);
+    ctx.closePath();
+    ctx.stroke();
+
+    // posture label
+    ctx.fillStyle = C.inkFaint; ctx.font = '600 13px ui-sans-serif, system-ui';
+    ctx.textAlign = 'center';
+    ctx.fillText(p > 0.5 ? '直坐 · 胸腔打开' : '含胸 · 胸腔受压', cx, topY + ribH + 28);
+
+    // --- diaphragm: resting dome height depends on posture room ---
+    // upright → dome can sit lower at rest AND descend further on inhale.
+    const domeRest = topY + ribH - 80 - p * 18;   // resting position (higher when slumped)
+    const descend  = 14 + p * 30;                 // inhale travel (small slumped, large upright)
+    const domeInh  = domeRest + descend;
+
+    function dome(yc, col, dash) {
+      ctx.strokeStyle = col; ctx.lineWidth = 3; ctx.setLineDash(dash ? [6, 5] : []);
+      ctx.beginPath();
+      ctx.moveTo(lx + 6, yc - 14);
+      ctx.quadraticCurveTo(cx, yc + 18, rx - 6, yc - 14);
+      ctx.stroke();
+      ctx.setLineDash([]);
+    }
+    // resting diaphragm (dashed, faint) and inhale diaphragm (solid green = exhale-color? no: inhale)
+    dome(domeRest, C.inkFaint, true);             // 静息位
+    dome(domeInh,  C.v2, false);                  // 吸气下沉位 (inhale = blue)
+
+    // descent arrow + magnitude
+    drawArrow(ctx, cx, domeRest + 2, cx, domeInh - 4, C.v2, 2.5);
+    ctx.fillStyle = C.v2; ctx.font = '700 12.5px ui-sans-serif, system-ui';
+    ctx.textAlign = 'left';
+    ctx.fillText('膈肌下沉', cx + 10, (domeRest + domeInh) / 2 + 4);
+    ctx.font = '12px ui-sans-serif, system-ui'; ctx.fillStyle = C.inkFaint;
+    ctx.fillText(p > 0.5 ? '行程大 → 吸得深' : '受限 → 吸得浅', cx + 10, (domeRest + domeInh) / 2 + 22);
+    ctx.restore();
+  }
+
+  // ---- right panel: bars for Vt and SNIP, both relative to their ranges -----
+  function bar(x, y, w, h, frac, col, label, value, unit, sub) {
+    // track
+    ctx.fillStyle = C.rule; roundRect(x, y, w, h, 7); ctx.fill();
+    // fill (computed fraction)
+    const fw = Math.max(0, Math.min(1, frac)) * w;
+    ctx.fillStyle = col; roundRect(x, y, fw, h, 7); ctx.fill();
+    // label above
+    ctx.fillStyle = C.inkSoft; ctx.font = '600 14px ui-sans-serif, system-ui';
+    ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic';
+    ctx.fillText(label, x, y - 10);
+    // value at right
+    ctx.fillStyle = col; ctx.font = '700 17px ui-monospace, monospace';
+    ctx.textAlign = 'right';
+    ctx.fillText(value + ' ' + unit, x + w, y - 10);
+    // sub note
+    if (sub) {
+      ctx.fillStyle = C.inkFaint; ctx.font = '12px ui-sans-serif, system-ui';
+      ctx.textAlign = 'left';
+      ctx.fillText(sub, x, y + h + 18);
+    }
+    ctx.textAlign = 'left';
+  }
+
+  function draw() {
+    ctx.clearRect(0, 0, W, H);
+    const p = +sPosture.value;
+    const m = model(p);
+    oPosture.textContent = p.toFixed(2) + (p > 0.66 ? ' · 偏直坐' : p < 0.34 ? ' · 偏含胸' : '');
+
+    drawTorso(p, m);
+
+    // right-side bars
+    const bx = 380, bw = 440;
+    // Vt bar — frame the slumped..upright range as the visible band
+    const VtLo = Vt0, VtHi = Vt0 * (1 + ALPHA);   // 500 .. 560
+    bar(bx, 90, bw, 30, (m.Vt - VtLo) / (VtHi - VtLo) * 0.85 + 0.15,
+        C.v2, '潮气量 Vt = Vt₀·(1 + α·posture)',
+        m.Vt.toFixed(0), 'mL', '含胸 ~' + VtLo + ' → 直坐 ~' + VtHi.toFixed(0) + ' mL（α=' + ALPHA + '，温和 +' + (ALPHA * 100).toFixed(0) + '%）');
+
+    // SNIP bar — Albarrati measured Δ = 8.7
+    const SnLo = SNIP_SLUMP, SnHi = SNIP_SLUMP + D_SNIP;
+    bar(bx, 175, bw, 30, (m.SNIP - SnLo) / (SnHi - SnLo) * 0.8 + 0.2,
+        C.v3, 'SNIP 吸气压代理 = ' + SNIP_SLUMP + ' + 8.7·posture',
+        m.SNIP.toFixed(1), 'cmH₂O', 'Albarrati 2018：含胸比直坐低 8.7 cmH₂O（实测, p=0.04）');
+
+    // minute ventilation readout box
+    const my = 255;
+    ctx.fillStyle = C.surface2 || '#f4f5f8';
+    ctx.strokeStyle = C.rule; ctx.lineWidth = 1.25;
+    roundRect(bx, my, bw, 86, 12); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = C.inkSoft; ctx.font = '600 13.5px ui-sans-serif, system-ui';
+    ctx.textAlign = 'left';
+    ctx.fillText('分钟通气 V̇E = 频率 × Vt（频率固定 6/min）', bx + 16, my + 26);
+    ctx.fillStyle = C.accent2; ctx.font = '700 26px ui-monospace, monospace';
+    ctx.fillText(m.VE.toFixed(2) + ' L/min', bx + 16, my + 60);
+    ctx.fillStyle = C.inkFaint; ctx.font = '12px ui-sans-serif, system-ui';
+    ctx.fillText('= 6 × ' + m.Vt.toFixed(0) + ' mL', bx + 200, my + 60);
+
+    // honest magnitude caption
+    ctx.fillStyle = C.inkFaint; ctx.font = 'italic 12px ui-sans-serif, system-ui';
+    ctx.fillText('幅度温和、方向确凿——坐直不是「深呼吸」，是把含胸压掉的那点吸气拿回来。', bx, my + 84 + 18);
+
+    readout.innerHTML =
+      'posture = <b>' + p.toFixed(2) + '</b> → 潮气量 <b style="color:var(--v2)">' + m.Vt.toFixed(0) + ' mL</b>、'
+      + '吸气压代理 SNIP <b style="color:var(--v3)">' + m.SNIP.toFixed(1) + ' cmH₂O</b>、'
+      + '分钟通气 <b style="color:var(--accent-2)">' + m.VE.toFixed(2) + ' L/min</b>。'
+      + '从含胸(0)拖到直坐(1)，SNIP 走完 Albarrati 实测的 <b>8.7 cmH₂O</b>、Vt 抬 <b>' + (ALPHA * 100).toFixed(0) + '%</b>，'
+      + '膈肌下沉行程也变大——这就是协议卡里「坐直」那一条在数字上的样子：'
+      + '<b>温和但确凿</b>，不夸大。';
+  }
+
+  sPosture.addEventListener('input', draw);
+  draw();
+})();
+
+</script>
+</body>
+</html>
