@@ -13,4 +13,4 @@ dependencies = []
 breath = "breath:main"
 
 [tool.setuptools]
-py-modules = ["breath"]
+py-modules = ["breath", "breath_tone"]

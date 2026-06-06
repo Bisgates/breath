@@ -16,6 +16,11 @@ if os.name != 'nt':
     import termios
     import tty
 
+try:
+    import breath_tone  # continuous guide tone (macOS, optional companion module)
+except ImportError:
+    breath_tone = None
+
 
 # ── Constants ────────────────────────────────────────────────────────
 
@@ -47,7 +52,7 @@ LOG_HEADER = 'date,time,preset,ratio,duration_target_s,duration_actual_s,breaths
 BAR_WIDTH      = 30
 FRAME_RATE_HZ  = 20
 FRAME_SLEEP    = 1.0 / FRAME_RATE_HZ
-COUNTDOWN_SECS = 3
+COUNTDOWN_SECS = 0.5
 MIN_TERM_WIDTH = 40
 MIN_CYCLE_SECS = 8
 
@@ -102,6 +107,8 @@ class Config:
     preset_name: str       # 'balanced', 'calm', 'extended', or 'custom'
     sound_enabled: bool
     quiet: bool
+    tone: str = 'on'       # 'on' | 'ticks' | 'off' — continuous guide tone (macOS)
+    tone_vol: float = 0.25
 
     @property
     def ratio_str(self):
@@ -373,13 +380,15 @@ def _sigint_handler(signum, frame):
     _abort[0] = True
 
 def run_countdown(layout, config):
-    """Run the 3-second settle countdown. Returns False if aborted."""
-    for i in range(COUNTDOWN_SECS, 0, -1):
+    """Run the brief settle countdown. Returns False if aborted."""
+    total_frames = max(1, int(COUNTDOWN_SECS * FRAME_RATE_HZ))
+    for frame in range(total_frames):
         if _abort[0]:
             return False
+        # integer seconds remaining, ceiling (so 0.5s shows "1")
+        label = str(-(-(total_frames - frame) // FRAME_RATE_HZ))
         move_to(layout.phase_row, 1)
         sys.stdout.write(ANSI_CLR_LINE)
-        label = str(i)
         if layout.minimal:
             sys.stdout.write('  ' + label)
         else:
@@ -389,13 +398,10 @@ def run_countdown(layout, config):
         draw_bar(layout, 0.0, INHALE)
         draw_footer(layout, False)
         sys.stdout.flush()
-        for _ in range(FRAME_RATE_HZ):
-            if _abort[0]:
-                return False
-            key = poll_key()
-            if key == 'q':
-                return False
-            time.sleep(FRAME_SLEEP)
+        key = poll_key()
+        if key == 'q':
+            return False
+        time.sleep(FRAME_SLEEP)
     return True
 
 def run_session(config, result):
@@ -418,6 +424,23 @@ def run_session(config, result):
 
     setup_windows_console()
     audio_mode = check_audio(config.quiet) if config.sound_enabled else 'none'
+
+    # Continuous guide tone (macOS): synthesized per-phase WAVs played by
+    # afplay so the breathing rhythm is followable with eyes closed. Falls
+    # back to the chime cues on any failure or when --tone off.
+    tone_player = None
+    if (audio_mode == 'afplay' and config.tone != 'off'
+            and breath_tone is not None):
+        try:
+            tone_player = breath_tone.TonePlayer(
+                config.inhale_s, config.exhale_s,
+                ticks=(config.tone == 'ticks'),
+                volume=config.tone_vol, quiet=config.quiet)
+        except Exception as e:
+            if not config.quiet:
+                sys.stderr.write('guide tone unavailable ({}), '
+                                 'using chime cues\n'.format(e))
+
     layout = compute_layout()
     if layout.minimal and not config.quiet:
         sys.stderr.write('Warning: terminal narrow, running in minimal mode.\n')
@@ -427,6 +450,19 @@ def run_session(config, result):
     _abort[0] = False
 
     muted = not config.sound_enabled
+
+    def cue(phase):
+        """Phase-start audio: continuous guide tone when available, else chime."""
+        if muted or audio_mode == 'none':
+            return
+        if tone_player is not None:
+            tone_player.start(phase == INHALE)
+        else:
+            play_sound(phase, audio_mode)
+
+    def tone_stop():
+        if tone_player is not None:
+            tone_player.stop()
 
     try:
         sys.stdout.write(ANSI_HIDE_CUR)
@@ -448,8 +484,7 @@ def run_session(config, result):
         paused_accum = 0.0
         pause_began = None
 
-        if not muted and audio_mode != 'none':
-            play_sound(INHALE, audio_mode)
+        cue(INHALE)
 
         while True:
             now = time.monotonic()
@@ -475,10 +510,11 @@ def run_session(config, result):
                     if pause_began is not None:
                         paused_accum += now - pause_began
                         pause_began = None
-                    if not muted and audio_mode != 'none':
-                        play_sound(INHALE, audio_mode)
+                    cue(INHALE)
                 elif key == 's':
                     muted = not muted
+                    if muted:
+                        tone_stop()
                 if state == PAUSED:
                     render_frame(layout, config, paused_elapsed,
                                  paused_remaining, paused_phase,
@@ -502,8 +538,7 @@ def run_session(config, result):
                 if state == INHALE:
                     phase_start_wall += config.inhale_s
                     state = EXHALE
-                    if not muted and audio_mode != 'none':
-                        play_sound(EXHALE, audio_mode)
+                    cue(EXHALE)
                 else:
                     result.breaths += 1
                     breathing_base = result.breaths * cycle_s
@@ -515,8 +550,7 @@ def run_session(config, result):
                         break
                     phase_start_wall += config.exhale_s
                     state = INHALE
-                    if not muted and audio_mode != 'none':
-                        play_sound(INHALE, audio_mode)
+                    cue(INHALE)
                 # Recalculate for the new phase so the render below
                 # shows the correct label and bar on the same frame
                 # the sound fires (no stale-frame flicker).
@@ -549,6 +583,7 @@ def run_session(config, result):
                 paused_remaining = remaining_s
                 state = PAUSED
                 pause_began = now
+                tone_stop()
                 render_frame(layout, config, paused_elapsed,
                              paused_remaining, paused_phase,
                              paused_progress, True, muted)
@@ -556,6 +591,8 @@ def run_session(config, result):
                 continue
             elif key == 's':
                 muted = not muted
+                if muted:
+                    tone_stop()
 
             render_frame(layout, config, elapsed_display, remaining_s,
                          state, progress, False, muted)
@@ -570,6 +607,7 @@ def run_session(config, result):
         result.elapsed = max(0.0, min(active_elapsed, float(config.duration_s)))
 
     finally:
+        tone_stop()
         sys.stdout.write(ANSI_SHOW_CUR)
         sys.stdout.write(ANSI_RESET)
         move_to(layout.footer_row + 2, 1)
@@ -764,6 +802,13 @@ def build_parser():
                         help='Breath ratio as inhale-exhale (e.g. 5-5 or 4-6)')
     parser.add_argument('--no-sound', '-n', action='store_true',
                         help='Disable audio cues')
+    parser.add_argument('--tone', choices=['on', 'ticks', 'off'], default='on',
+                        help='Continuous guide tone (macOS): on (default), '
+                             'ticks (adds a faint per-second blip), or off '
+                             '(legacy chime cues only)')
+    parser.add_argument('--tone-vol', type=float, default=0.25,
+                        metavar='VOL',
+                        help='Guide tone volume 0.0–1.0 (default 0.25)')
     parser.add_argument('--quiet', '-q', action='store_true',
                         help='Suppress startup warnings')
     parser.add_argument('--stats', action='store_true',
@@ -850,6 +895,8 @@ def main():
         preset_name=preset_name,
         sound_enabled=not args.no_sound,
         quiet=args.quiet,
+        tone=args.tone,
+        tone_vol=min(1.0, max(0.0, args.tone_vol)),
     )
 
     result = Result()
