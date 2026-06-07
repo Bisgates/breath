@@ -282,11 +282,35 @@ def poll_key():
 def move_to(row, col):
     sys.stdout.write('\033[{};{}H'.format(row, col))
 
+# Diff rendering: each row's last-written content is cached; an unchanged
+# row writes nothing, and the bar row rewrites only the characters that
+# actually changed (1-2 cells per frame). Rewriting whole lines at 20fps —
+# even overwrite-in-place — flickers in some terminal renderers.
+_screen_cache = {}
+
+def _reset_screen_cache():
+    _screen_cache.clear()
+
+def _write_row(row, text, diff=False):
+    old = _screen_cache.get(row)
+    if old == text:
+        return
+    if diff and old is not None and len(old) == len(text):
+        # plain text only (no ANSI codes): column == string index
+        i, n = 0, len(text)
+        while text[i] == old[i]:
+            i += 1
+        j = n - 1
+        while j > i and text[j] == old[j]:
+            j -= 1
+        move_to(row, i + 1)
+        sys.stdout.write(text[i:j + 1])
+    else:
+        move_to(row, 1)
+        sys.stdout.write(text + ANSI_CLR_LINE)
+    _screen_cache[row] = text
+
 def draw_header(layout, config, remaining_s, paused, muted):
-    # NOTE: all draw_* functions overwrite in place and clear to end-of-line
-    # AFTER the content. Clearing first then redrawing makes the whole line
-    # blink at 20fps once the bar edge changes every frame (sub-cell chars).
-    move_to(layout.header_row, 1)
     parts = []
     if paused:
         parts.append('\u2016' if layout.use_unicode else 'P')
@@ -300,10 +324,9 @@ def draw_header(layout, config, remaining_s, paused, muted):
         format_mmss(remaining_s),
         indicator,
     )
-    sys.stdout.write(line + ANSI_CLR_LINE)
+    _write_row(layout.header_row, line)
 
 def draw_phase(layout, phase):
-    move_to(layout.phase_row, 1)
     label = PHASE_LABEL.get(phase, phase)
     if layout.use_colour:
         colour = ANSI_CYAN if phase == INHALE else ANSI_GREEN
@@ -311,10 +334,10 @@ def draw_phase(layout, phase):
     else:
         styled = label
     if layout.minimal:
-        sys.stdout.write('  ' + styled + ANSI_CLR_LINE)
+        _write_row(layout.phase_row, '  ' + styled)
     else:
         pad = (layout.width - len(label)) // 2
-        sys.stdout.write(' ' * pad + styled + ANSI_CLR_LINE)
+        _write_row(layout.phase_row, ' ' * pad + styled)
 
 def smooth_bar(frac, width):
     """Render a bar with sub-cell resolution: the boundary cell steps
@@ -333,7 +356,6 @@ def smooth_bar(frac, width):
     return bar + '\u2591' * (width - len(bar))
 
 def draw_bar(layout, progress, phase):
-    move_to(layout.bar_row, 1)
     if phase == INHALE:
         frac = progress
     else:
@@ -345,13 +367,12 @@ def draw_bar(layout, progress, phase):
         filled = round(frac * BAR_WIDTH)
         bar = '#' * filled + '-' * (BAR_WIDTH - filled)
     if layout.minimal:
-        sys.stdout.write('  ' + bar + ANSI_CLR_LINE)
+        _write_row(layout.bar_row, '  ' + bar, diff=True)
     else:
         pad = (layout.width - BAR_WIDTH) // 2
-        sys.stdout.write(' ' * pad + bar + ANSI_CLR_LINE)
+        _write_row(layout.bar_row, ' ' * pad + bar, diff=True)
 
 def draw_progress(layout, config, elapsed):
-    move_to(layout.progress_row, 1)
     cycle_s = config.inhale_s + config.exhale_s
     frac = min(1.0, elapsed / config.duration_s) if config.duration_s > 0 else 1.0
     if layout.use_unicode:
@@ -368,20 +389,19 @@ def draw_progress(layout, config, elapsed):
     if layout.use_colour:
         bar = ANSI_DIM + bar + ANSI_RESET
     if layout.minimal:
-        sys.stdout.write('  ' + bar + ANSI_CLR_LINE)
+        _write_row(layout.progress_row, '  ' + bar)
     else:
         pad = (layout.width - BAR_WIDTH) // 2
-        sys.stdout.write(' ' * pad + bar + ANSI_CLR_LINE)
+        _write_row(layout.progress_row, ' ' * pad + bar)
 
 def draw_footer(layout, paused):
-    move_to(layout.footer_row, 1)
     if paused:
         text = 'space resume \u00b7 q quit'
     else:
         text = 'space pause \u00b7 s mute \u00b7 q quit'
     if layout.use_colour:
         text = ANSI_DIM + text + ANSI_RESET
-    sys.stdout.write('  ' + text + ANSI_CLR_LINE)
+    _write_row(layout.footer_row, '  ' + text)
 
 def render_frame(layout, config, elapsed, remaining_s, phase, progress,
                  paused, muted):
@@ -405,12 +425,11 @@ def run_countdown(layout, config):
             return False
         # integer seconds remaining, ceiling (so 0.5s shows "1")
         label = str(-(-(total_frames - frame) // FRAME_RATE_HZ))
-        move_to(layout.phase_row, 1)
         if layout.minimal:
-            sys.stdout.write('  ' + label + ANSI_CLR_LINE)
+            _write_row(layout.phase_row, '  ' + label)
         else:
             pad = (layout.width - len(label)) // 2
-            sys.stdout.write(' ' * pad + label + ANSI_CLR_LINE)
+            _write_row(layout.phase_row, ' ' * pad + label)
         draw_header(layout, config, config.duration_s, False, False)
         draw_bar(layout, 0.0, INHALE)
         draw_footer(layout, False)
@@ -484,6 +503,7 @@ def run_session(config, result):
     try:
         sys.stdout.write(ANSI_HIDE_CUR)
         sys.stdout.write(ANSI_CLEAR)
+        _reset_screen_cache()
         sys.stdout.flush()
 
         if not run_countdown(layout, config):
