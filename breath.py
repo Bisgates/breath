@@ -65,6 +65,8 @@ ANSI_CYAN     = '\033[36m'
 ANSI_GREEN    = '\033[32m'
 ANSI_CLR_LINE = '\033[K'
 ANSI_BG_TRACK = '\033[48;5;238m'  # bar track: dim grey background
+ANSI_SYNC_ON  = '\033[?2026h'     # synchronized update: terminal applies
+ANSI_SYNC_OFF = '\033[?2026l'     # the frame atomically (ignored if unsupported)
 
 INHALE, EXHALE, PAUSED = 'INHALE', 'EXHALE', 'PAUSED'
 PHASE_LABEL = {INHALE: 'IN', EXHALE: 'OUT'}
@@ -300,7 +302,8 @@ def _write_row(row, text, diff=False, wrap=None):
     if old == text:
         return
     if (diff and old is not None and len(old) == len(text)
-            and (wrap is None or _diff_start(text, old) >= wrap[0])):
+            and (wrap is None or _diff_start(text, old) >= wrap[0])
+            and max(map(ord, old + text)) < 0x1F000):  # wide chars: col != index
         # plain text only (no ANSI codes): column == string index
         i, n = _diff_start(text, old), len(text)
         j = n - 1
@@ -340,7 +343,7 @@ def draw_header(layout, config, remaining_s, paused, muted):
         format_mmss(remaining_s),
         indicator,
     )
-    _write_row(layout.header_row, line)
+    _write_row(layout.header_row, line, diff=True)
 
 def draw_phase(layout, phase):
     label = PHASE_LABEL.get(phase, phase)
@@ -398,13 +401,9 @@ def draw_progress(layout, config, elapsed):
     else:
         filled = max(0, min(BAR_WIDTH, round(frac * BAR_WIDTH)))
         bar = '=' * filled + '-' * (BAR_WIDTH - filled)
-    if layout.use_colour:
-        bar = ANSI_DIM + bar + ANSI_RESET
-    if layout.minimal:
-        _write_row(layout.progress_row, '  ' + bar)
-    else:
-        pad = (layout.width - BAR_WIDTH) // 2
-        _write_row(layout.progress_row, ' ' * pad + bar)
+    pad = '  ' if layout.minimal else ' ' * ((layout.width - BAR_WIDTH) // 2)
+    wrap = (len(pad), ANSI_DIM, ANSI_RESET) if layout.use_colour else None
+    _write_row(layout.progress_row, pad + bar, diff=True, wrap=wrap)
 
 def draw_footer(layout, paused):
     if paused:
@@ -417,11 +416,13 @@ def draw_footer(layout, paused):
 
 def render_frame(layout, config, elapsed, remaining_s, phase, progress,
                  paused, muted):
+    sys.stdout.write(ANSI_SYNC_ON)
     draw_header(layout, config, remaining_s, paused, muted)
     draw_phase(layout, phase)
     draw_bar(layout, progress, phase)
     draw_progress(layout, config, elapsed)
     draw_footer(layout, paused)
+    sys.stdout.write(ANSI_SYNC_OFF)
     sys.stdout.flush()
 
 _abort = [False]
