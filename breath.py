@@ -283,8 +283,10 @@ def move_to(row, col):
     sys.stdout.write('\033[{};{}H'.format(row, col))
 
 def draw_header(layout, config, remaining_s, paused, muted):
+    # NOTE: all draw_* functions overwrite in place and clear to end-of-line
+    # AFTER the content. Clearing first then redrawing makes the whole line
+    # blink at 20fps once the bar edge changes every frame (sub-cell chars).
     move_to(layout.header_row, 1)
-    sys.stdout.write(ANSI_CLR_LINE)
     parts = []
     if paused:
         parts.append('\u2016' if layout.use_unicode else 'P')
@@ -298,11 +300,10 @@ def draw_header(layout, config, remaining_s, paused, muted):
         format_mmss(remaining_s),
         indicator,
     )
-    sys.stdout.write(line)
+    sys.stdout.write(line + ANSI_CLR_LINE)
 
 def draw_phase(layout, phase):
     move_to(layout.phase_row, 1)
-    sys.stdout.write(ANSI_CLR_LINE)
     label = PHASE_LABEL.get(phase, phase)
     if layout.use_colour:
         colour = ANSI_CYAN if phase == INHALE else ANSI_GREEN
@@ -310,60 +311,72 @@ def draw_phase(layout, phase):
     else:
         styled = label
     if layout.minimal:
-        sys.stdout.write('  ' + styled)
+        sys.stdout.write('  ' + styled + ANSI_CLR_LINE)
     else:
         pad = (layout.width - len(label)) // 2
-        sys.stdout.write(' ' * pad + styled)
+        sys.stdout.write(' ' * pad + styled + ANSI_CLR_LINE)
+
+def smooth_bar(frac, width):
+    """Render a bar with 1/8-cell resolution using partial block chars.
+
+    width*8 distinct steps (e.g. 240 for a 30-cell bar), so the fill edge
+    glides instead of jumping one whole cell at a time.
+    """
+    eighths = round(max(0.0, min(1.0, frac)) * width * 8)
+    full, rem = divmod(eighths, 8)
+    bar = '\u2588' * full
+    if rem:
+        bar += chr(0x2590 - rem)  # U+258F \u258f(1/8) \u2026 U+2589 \u2589 (7/8)
+    return bar + '\u2591' * (width - len(bar))
 
 def draw_bar(layout, progress, phase):
     move_to(layout.bar_row, 1)
-    sys.stdout.write(ANSI_CLR_LINE)
     if phase == INHALE:
-        filled = round(progress * BAR_WIDTH)
+        frac = progress
     else:
-        filled = round((1.0 - progress) * BAR_WIDTH)
-    filled = max(0, min(BAR_WIDTH, filled))
-    empty = BAR_WIDTH - filled
+        frac = 1.0 - progress
+    frac = max(0.0, min(1.0, frac))
     if layout.use_unicode:
-        bar = '\u2588' * filled + '\u2591' * empty
+        bar = smooth_bar(frac, BAR_WIDTH)
     else:
-        bar = '#' * filled + '-' * empty
+        filled = round(frac * BAR_WIDTH)
+        bar = '#' * filled + '-' * (BAR_WIDTH - filled)
     if layout.minimal:
-        sys.stdout.write('  ' + bar)
+        sys.stdout.write('  ' + bar + ANSI_CLR_LINE)
     else:
         pad = (layout.width - BAR_WIDTH) // 2
-        sys.stdout.write(' ' * pad + bar)
+        sys.stdout.write(' ' * pad + bar + ANSI_CLR_LINE)
 
 def draw_progress(layout, config, elapsed):
     move_to(layout.progress_row, 1)
-    sys.stdout.write(ANSI_CLR_LINE)
     cycle_s = config.inhale_s + config.exhale_s
     frac = min(1.0, elapsed / config.duration_s) if config.duration_s > 0 else 1.0
-    filled = round(frac * BAR_WIDTH)
-    filled = max(0, min(BAR_WIDTH, filled))
-    empty = BAR_WIDTH - filled
     if layout.use_unicode:
-        bar = '\u2501' * filled + '\u2500' * empty
+        # half-cell steps (\u2578 = heavy left half) double the resolution
+        halves = round(frac * BAR_WIDTH * 2)
+        full, rem = divmod(halves, 2)
+        bar = '\u2501' * full + ('\u2578' if rem else '')
+        bar += '\u2500' * (BAR_WIDTH - len(bar))
     else:
-        bar = '=' * filled + '-' * empty
+        filled = max(0, min(BAR_WIDTH, round(frac * BAR_WIDTH)))
+        bar = '=' * filled + '-' * (BAR_WIDTH - filled)
     if layout.use_colour:
         bar = ANSI_DIM + bar + ANSI_RESET
     if layout.minimal:
-        sys.stdout.write('  ' + bar)
+        sys.stdout.write('  ' + bar + ANSI_CLR_LINE)
     else:
         pad = (layout.width - BAR_WIDTH) // 2
-        sys.stdout.write(' ' * pad + bar)
+        sys.stdout.write(' ' * pad + bar + ANSI_CLR_LINE)
 
 def draw_footer(layout, paused):
     move_to(layout.footer_row, 1)
-    sys.stdout.write(ANSI_CLR_LINE)
     if paused:
         text = 'space resume \u00b7 q quit'
     else:
         text = 'space pause \u00b7 s mute \u00b7 q quit'
     if layout.use_colour:
         text = ANSI_DIM + text + ANSI_RESET
-    sys.stdout.write('  ' + text)
+    sys.stdout.write('  ' + text + ANSI_CLR_LINE)
 
 def render_frame(layout, config, elapsed, remaining_s, phase, progress,
                  paused, muted):
@@ -388,12 +401,11 @@ def run_countdown(layout, config):
         # integer seconds remaining, ceiling (so 0.5s shows "1")
         label = str(-(-(total_frames - frame) // FRAME_RATE_HZ))
         move_to(layout.phase_row, 1)
-        sys.stdout.write(ANSI_CLR_LINE)
         if layout.minimal:
-            sys.stdout.write('  ' + label)
+            sys.stdout.write('  ' + label + ANSI_CLR_LINE)
         else:
             pad = (layout.width - len(label)) // 2
-            sys.stdout.write(' ' * pad + label)
+            sys.stdout.write(' ' * pad + label + ANSI_CLR_LINE)
         draw_header(layout, config, config.duration_s, False, False)
         draw_bar(layout, 0.0, INHALE)
         draw_footer(layout, False)
