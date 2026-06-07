@@ -50,6 +50,7 @@ LOG_FILE   = os.path.expanduser('~/.breathe_log.csv')
 LOG_HEADER = 'date,time,preset,ratio,duration_target_s,duration_actual_s,breaths,completion_pct,status'
 
 BAR_WIDTH      = 30
+BAR_QUANT      = 1000   # progress state quantized to this many equal steps
 FRAME_RATE_HZ  = 20
 FRAME_SLEEP    = 1.0 / FRAME_RATE_HZ
 COUNTDOWN_SECS = 0.5
@@ -339,32 +340,19 @@ def draw_phase(layout, phase):
         pad = (layout.width - len(label)) // 2
         _write_row(layout.phase_row, ' ' * pad + styled)
 
-def smooth_bar(frac, width):
-    """Render a bar with sub-cell resolution: the boundary cell steps
-    \u2591\u2192\u2592\u2192\u2593\u2192\u2588, so the fill edge glides instead of jumping one whole cell.
-
-    Shade chars, not partial blocks (\u258d\u258c\u258b): those leave their unfilled half
-    as bare terminal background \u2014 a black notch between fill and \u2591 track.
-    """
-    eighths = round(max(0.0, min(1.0, frac)) * width * 8)
-    full, rem = divmod(eighths, 8)
-    bar = '\u2588' * full
-    if rem >= 6:
-        bar += '\u2593'
-    elif rem >= 3:
-        bar += '\u2592'
-    return bar + '\u2591' * (width - len(bar))
-
 def draw_bar(layout, progress, phase):
     if phase == INHALE:
         frac = progress
     else:
         frac = 1.0 - progress
     frac = max(0.0, min(1.0, frac))
+    # quantize the state to 1000 equal steps, then render whole cells \u2014
+    # clean \u2588/\u2591 only, each cell flips at its exact threshold
+    frac = round(frac * BAR_QUANT) / BAR_QUANT
+    filled = round(frac * BAR_WIDTH)
     if layout.use_unicode:
-        bar = smooth_bar(frac, BAR_WIDTH)
+        bar = '\u2588' * filled + '\u2591' * (BAR_WIDTH - filled)
     else:
-        filled = round(frac * BAR_WIDTH)
         bar = '#' * filled + '-' * (BAR_WIDTH - filled)
     if layout.minimal:
         _write_row(layout.bar_row, '  ' + bar, diff=True)
