@@ -317,16 +317,19 @@ def draw_phase(layout, phase):
         sys.stdout.write(' ' * pad + styled + ANSI_CLR_LINE)
 
 def smooth_bar(frac, width):
-    """Render a bar with 1/8-cell resolution using partial block chars.
+    """Render a bar with sub-cell resolution: the boundary cell steps
+    \u2591\u2192\u2592\u2192\u2593\u2192\u2588, so the fill edge glides instead of jumping one whole cell.
 
-    width*8 distinct steps (e.g. 240 for a 30-cell bar), so the fill edge
-    glides instead of jumping one whole cell at a time.
+    Shade chars, not partial blocks (\u258d\u258c\u258b): those leave their unfilled half
+    as bare terminal background \u2014 a black notch between fill and \u2591 track.
     """
     eighths = round(max(0.0, min(1.0, frac)) * width * 8)
     full, rem = divmod(eighths, 8)
     bar = '\u2588' * full
-    if rem:
-        bar += chr(0x2590 - rem)  # U+258F \u258f(1/8) \u2026 U+2589 \u2589 (7/8)
+    if rem >= 6:
+        bar += '\u2593'
+    elif rem >= 3:
+        bar += '\u2592'
     return bar + '\u2591' * (width - len(bar))
 
 def draw_bar(layout, progress, phase):
@@ -352,10 +355,12 @@ def draw_progress(layout, config, elapsed):
     cycle_s = config.inhale_s + config.exhale_s
     frac = min(1.0, elapsed / config.duration_s) if config.duration_s > 0 else 1.0
     if layout.use_unicode:
-        # half-cell steps (\u2578 = heavy left half) double the resolution
+        # half-cell steps (\u257e = heavy left, light right) double the
+        # resolution without breaking the line (\u2578 leaves its right half
+        # blank \u2014 reads as a black gap in the track)
         halves = round(frac * BAR_WIDTH * 2)
         full, rem = divmod(halves, 2)
-        bar = '\u2501' * full + ('\u2578' if rem else '')
+        bar = '\u2501' * full + ('\u257e' if rem else '')
         bar += '\u2500' * (BAR_WIDTH - len(bar))
     else:
         filled = max(0, min(BAR_WIDTH, round(frac * BAR_WIDTH)))
