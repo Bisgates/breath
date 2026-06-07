@@ -50,7 +50,6 @@ LOG_FILE   = os.path.expanduser('~/.breathe_log.csv')
 LOG_HEADER = 'date,time,preset,ratio,duration_target_s,duration_actual_s,breaths,completion_pct,status'
 
 BAR_WIDTH      = 30
-BAR_QUANT      = 1000   # progress state quantized to this many equal steps
 FRAME_RATE_HZ  = 20
 FRAME_SLEEP    = 1.0 / FRAME_RATE_HZ
 COUNTDOWN_SECS = 0.5
@@ -65,6 +64,7 @@ ANSI_DIM      = '\033[2m'
 ANSI_CYAN     = '\033[36m'
 ANSI_GREEN    = '\033[32m'
 ANSI_CLR_LINE = '\033[K'
+ANSI_BG_TRACK = '\033[48;5;238m'  # bar track: dim grey background
 
 INHALE, EXHALE, PAUSED = 'INHALE', 'EXHALE', 'PAUSED'
 PHASE_LABEL = {INHALE: 'IN', EXHALE: 'OUT'}
@@ -292,24 +292,39 @@ _screen_cache = {}
 def _reset_screen_cache():
     _screen_cache.clear()
 
-def _write_row(row, text, diff=False):
+def _write_row(row, text, diff=False, wrap=None):
+    """wrap=(start, prefix, suffix): chars from index `start` on are written
+    inside prefix/suffix (colour codes for the bar body, applied at write
+    time so the cached text stays plain and diffable)."""
     old = _screen_cache.get(row)
     if old == text:
         return
-    if diff and old is not None and len(old) == len(text):
+    if (diff and old is not None and len(old) == len(text)
+            and (wrap is None or _diff_start(text, old) >= wrap[0])):
         # plain text only (no ANSI codes): column == string index
-        i, n = 0, len(text)
-        while text[i] == old[i]:
-            i += 1
+        i, n = _diff_start(text, old), len(text)
         j = n - 1
         while j > i and text[j] == old[j]:
             j -= 1
         move_to(row, i + 1)
-        sys.stdout.write(text[i:j + 1])
+        seg = text[i:j + 1]
+        if wrap is not None:
+            seg = wrap[1] + seg + wrap[2]
+        sys.stdout.write(seg)
     else:
         move_to(row, 1)
-        sys.stdout.write(text + ANSI_CLR_LINE)
+        if wrap is not None:
+            s, pre, suf = wrap
+            sys.stdout.write(text[:s] + pre + text[s:] + suf + ANSI_CLR_LINE)
+        else:
+            sys.stdout.write(text + ANSI_CLR_LINE)
     _screen_cache[row] = text
+
+def _diff_start(text, old):
+    i = 0
+    while i < len(text) and text[i] == old[i]:
+        i += 1
+    return i
 
 def draw_header(layout, config, remaining_s, paused, muted):
     parts = []
@@ -346,19 +361,28 @@ def draw_bar(layout, progress, phase):
     else:
         frac = 1.0 - progress
     frac = max(0.0, min(1.0, frac))
-    # quantize the state to 1000 equal steps, then render whole cells \u2014
-    # clean \u2588/\u2591 only, each cell flips at its exact threshold
-    frac = round(frac * BAR_QUANT) / BAR_QUANT
-    filled = round(frac * BAR_WIDTH)
-    if layout.use_unicode:
+    wrap = None
+    if layout.use_unicode and layout.use_colour:
+        # pixel-fine cells: 1/8-block edge chars give 240 sub-cells
+        # (24-80 steps/s for 3-10s phases \u2014 reads as continuous motion).
+        # The track is a coloured background, so the edge char's empty
+        # half shows track grey, never the bare terminal background.
+        eighths = round(frac * BAR_WIDTH * 8)
+        full, rem = divmod(eighths, 8)
+        bar = '\u2588' * full
+        if rem:
+            bar += chr(0x2590 - rem)  # U+258F \u258f(1/8) \u2026 U+2589 \u2589 (7/8)
+        bar += ' ' * (BAR_WIDTH - len(bar))
+        wrap = (ANSI_BG_TRACK, ANSI_RESET)
+    elif layout.use_unicode:
+        filled = round(frac * BAR_WIDTH)
         bar = '\u2588' * filled + '\u2591' * (BAR_WIDTH - filled)
     else:
+        filled = round(frac * BAR_WIDTH)
         bar = '#' * filled + '-' * (BAR_WIDTH - filled)
-    if layout.minimal:
-        _write_row(layout.bar_row, '  ' + bar, diff=True)
-    else:
-        pad = (layout.width - BAR_WIDTH) // 2
-        _write_row(layout.bar_row, ' ' * pad + bar, diff=True)
+    pad = '  ' if layout.minimal else ' ' * ((layout.width - BAR_WIDTH) // 2)
+    _write_row(layout.bar_row, pad + bar, diff=True,
+               wrap=(len(pad),) + wrap if wrap else None)
 
 def draw_progress(layout, config, elapsed):
     cycle_s = config.inhale_s + config.exhale_s
