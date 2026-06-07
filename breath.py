@@ -64,9 +64,6 @@ ANSI_DIM      = '\033[2m'
 ANSI_CYAN     = '\033[36m'
 ANSI_GREEN    = '\033[32m'
 ANSI_CLR_LINE = '\033[K'
-ANSI_BG_TRACK = '\033[48;5;238m'  # bar track: dim grey background
-ANSI_SYNC_ON  = '\033[?2026h'     # synchronized update: terminal applies
-ANSI_SYNC_OFF = '\033[?2026l'     # the frame atomically (ignored if unsupported)
 
 INHALE, EXHALE, PAUSED = 'INHALE', 'EXHALE', 'PAUSED'
 PHASE_LABEL = {INHALE: 'IN', EXHALE: 'OUT'}
@@ -285,51 +282,9 @@ def poll_key():
 def move_to(row, col):
     sys.stdout.write('\033[{};{}H'.format(row, col))
 
-# Diff rendering: each row's last-written content is cached; an unchanged
-# row writes nothing, and the bar row rewrites only the characters that
-# actually changed (1-2 cells per frame). Rewriting whole lines at 20fps —
-# even overwrite-in-place — flickers in some terminal renderers.
-_screen_cache = {}
-
-def _reset_screen_cache():
-    _screen_cache.clear()
-
-def _write_row(row, text, diff=False, wrap=None):
-    """wrap=(start, prefix, suffix): chars from index `start` on are written
-    inside prefix/suffix (colour codes for the bar body, applied at write
-    time so the cached text stays plain and diffable)."""
-    old = _screen_cache.get(row)
-    if old == text:
-        return
-    if (diff and old is not None and len(old) == len(text)
-            and (wrap is None or _diff_start(text, old) >= wrap[0])
-            and max(map(ord, old + text)) < 0x1F000):  # wide chars: col != index
-        # plain text only (no ANSI codes): column == string index
-        i, n = _diff_start(text, old), len(text)
-        j = n - 1
-        while j > i and text[j] == old[j]:
-            j -= 1
-        move_to(row, i + 1)
-        seg = text[i:j + 1]
-        if wrap is not None:
-            seg = wrap[1] + seg + wrap[2]
-        sys.stdout.write(seg)
-    else:
-        move_to(row, 1)
-        if wrap is not None:
-            s, pre, suf = wrap
-            sys.stdout.write(text[:s] + pre + text[s:] + suf + ANSI_CLR_LINE)
-        else:
-            sys.stdout.write(text + ANSI_CLR_LINE)
-    _screen_cache[row] = text
-
-def _diff_start(text, old):
-    i = 0
-    while i < len(text) and text[i] == old[i]:
-        i += 1
-    return i
-
 def draw_header(layout, config, remaining_s, paused, muted):
+    move_to(layout.header_row, 1)
+    sys.stdout.write(ANSI_CLR_LINE)
     parts = []
     if paused:
         parts.append('\u2016' if layout.use_unicode else 'P')
@@ -343,9 +298,11 @@ def draw_header(layout, config, remaining_s, paused, muted):
         format_mmss(remaining_s),
         indicator,
     )
-    _write_row(layout.header_row, line, diff=True)
+    sys.stdout.write(line)
 
 def draw_phase(layout, phase):
+    move_to(layout.phase_row, 1)
+    sys.stdout.write(ANSI_CLR_LINE)
     label = PHASE_LABEL.get(phase, phase)
     if layout.use_colour:
         colour = ANSI_CYAN if phase == INHALE else ANSI_GREEN
@@ -353,76 +310,68 @@ def draw_phase(layout, phase):
     else:
         styled = label
     if layout.minimal:
-        _write_row(layout.phase_row, '  ' + styled)
+        sys.stdout.write('  ' + styled)
     else:
         pad = (layout.width - len(label)) // 2
-        _write_row(layout.phase_row, ' ' * pad + styled)
+        sys.stdout.write(' ' * pad + styled)
 
 def draw_bar(layout, progress, phase):
+    move_to(layout.bar_row, 1)
+    sys.stdout.write(ANSI_CLR_LINE)
     if phase == INHALE:
-        frac = progress
+        filled = round(progress * BAR_WIDTH)
     else:
-        frac = 1.0 - progress
-    frac = max(0.0, min(1.0, frac))
-    wrap = None
-    if layout.use_unicode and layout.use_colour:
-        # pixel-fine cells: 1/8-block edge chars give 240 sub-cells
-        # (24-80 steps/s for 3-10s phases \u2014 reads as continuous motion).
-        # The track is a coloured background, so the edge char's empty
-        # half shows track grey, never the bare terminal background.
-        eighths = round(frac * BAR_WIDTH * 8)
-        full, rem = divmod(eighths, 8)
-        bar = '\u2588' * full
-        if rem:
-            bar += chr(0x2590 - rem)  # U+258F \u258f(1/8) \u2026 U+2589 \u2589 (7/8)
-        bar += ' ' * (BAR_WIDTH - len(bar))
-        wrap = (ANSI_BG_TRACK, ANSI_RESET)
-    elif layout.use_unicode:
-        filled = round(frac * BAR_WIDTH)
-        bar = '\u2588' * filled + '\u2591' * (BAR_WIDTH - filled)
+        filled = round((1.0 - progress) * BAR_WIDTH)
+    filled = max(0, min(BAR_WIDTH, filled))
+    empty = BAR_WIDTH - filled
+    if layout.use_unicode:
+        bar = '\u2588' * filled + '\u2591' * empty
     else:
-        filled = round(frac * BAR_WIDTH)
-        bar = '#' * filled + '-' * (BAR_WIDTH - filled)
-    pad = '  ' if layout.minimal else ' ' * ((layout.width - BAR_WIDTH) // 2)
-    _write_row(layout.bar_row, pad + bar, diff=True,
-               wrap=(len(pad),) + wrap if wrap else None)
+        bar = '#' * filled + '-' * empty
+    if layout.minimal:
+        sys.stdout.write('  ' + bar)
+    else:
+        pad = (layout.width - BAR_WIDTH) // 2
+        sys.stdout.write(' ' * pad + bar)
 
 def draw_progress(layout, config, elapsed):
+    move_to(layout.progress_row, 1)
+    sys.stdout.write(ANSI_CLR_LINE)
     cycle_s = config.inhale_s + config.exhale_s
     frac = min(1.0, elapsed / config.duration_s) if config.duration_s > 0 else 1.0
+    filled = round(frac * BAR_WIDTH)
+    filled = max(0, min(BAR_WIDTH, filled))
+    empty = BAR_WIDTH - filled
     if layout.use_unicode:
-        # half-cell steps (\u257e = heavy left, light right) double the
-        # resolution without breaking the line (\u2578 leaves its right half
-        # blank \u2014 reads as a black gap in the track)
-        halves = round(frac * BAR_WIDTH * 2)
-        full, rem = divmod(halves, 2)
-        bar = '\u2501' * full + ('\u257e' if rem else '')
-        bar += '\u2500' * (BAR_WIDTH - len(bar))
+        bar = '\u2501' * filled + '\u2500' * empty
     else:
-        filled = max(0, min(BAR_WIDTH, round(frac * BAR_WIDTH)))
-        bar = '=' * filled + '-' * (BAR_WIDTH - filled)
-    pad = '  ' if layout.minimal else ' ' * ((layout.width - BAR_WIDTH) // 2)
-    wrap = (len(pad), ANSI_DIM, ANSI_RESET) if layout.use_colour else None
-    _write_row(layout.progress_row, pad + bar, diff=True, wrap=wrap)
+        bar = '=' * filled + '-' * empty
+    if layout.use_colour:
+        bar = ANSI_DIM + bar + ANSI_RESET
+    if layout.minimal:
+        sys.stdout.write('  ' + bar)
+    else:
+        pad = (layout.width - BAR_WIDTH) // 2
+        sys.stdout.write(' ' * pad + bar)
 
 def draw_footer(layout, paused):
+    move_to(layout.footer_row, 1)
+    sys.stdout.write(ANSI_CLR_LINE)
     if paused:
         text = 'space resume \u00b7 q quit'
     else:
         text = 'space pause \u00b7 s mute \u00b7 q quit'
     if layout.use_colour:
         text = ANSI_DIM + text + ANSI_RESET
-    _write_row(layout.footer_row, '  ' + text)
+    sys.stdout.write('  ' + text)
 
 def render_frame(layout, config, elapsed, remaining_s, phase, progress,
                  paused, muted):
-    sys.stdout.write(ANSI_SYNC_ON)
     draw_header(layout, config, remaining_s, paused, muted)
     draw_phase(layout, phase)
     draw_bar(layout, progress, phase)
     draw_progress(layout, config, elapsed)
     draw_footer(layout, paused)
-    sys.stdout.write(ANSI_SYNC_OFF)
     sys.stdout.flush()
 
 _abort = [False]
@@ -438,11 +387,13 @@ def run_countdown(layout, config):
             return False
         # integer seconds remaining, ceiling (so 0.5s shows "1")
         label = str(-(-(total_frames - frame) // FRAME_RATE_HZ))
+        move_to(layout.phase_row, 1)
+        sys.stdout.write(ANSI_CLR_LINE)
         if layout.minimal:
-            _write_row(layout.phase_row, '  ' + label)
+            sys.stdout.write('  ' + label)
         else:
             pad = (layout.width - len(label)) // 2
-            _write_row(layout.phase_row, ' ' * pad + label)
+            sys.stdout.write(' ' * pad + label)
         draw_header(layout, config, config.duration_s, False, False)
         draw_bar(layout, 0.0, INHALE)
         draw_footer(layout, False)
@@ -516,7 +467,6 @@ def run_session(config, result):
     try:
         sys.stdout.write(ANSI_HIDE_CUR)
         sys.stdout.write(ANSI_CLEAR)
-        _reset_screen_cache()
         sys.stdout.flush()
 
         if not run_countdown(layout, config):
